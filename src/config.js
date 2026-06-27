@@ -88,7 +88,7 @@
     { id: 'avatarshape',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
     { id: 'codestyle',    label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },
     { id: 'mentionpills', label: 'Mention pills',           default: true,  desc: 'Show @mentions as Slack-style rounded chips with a tinted background' },
-    { id: 'selfmessages', label: 'Left-align your messages', default: true, desc: 'Show your own messages left-aligned (like Slack) with a subtle highlight, instead of right-aligned' },
+    { id: 'selfmessages', label: 'Left-align your messages', default: false, desc: 'Show your own messages left-aligned (like Slack) with a subtle highlight, instead of right-aligned. Experimental — GChat gives self-messages no avatar, so this can look orphaned.' },
     { id: 'composer',     label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
     { id: 'hidemeetings', label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
     { id: 'dimmeetings',  label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },

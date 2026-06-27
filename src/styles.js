@@ -82,7 +82,10 @@
     parts.push(mk('sidebar', [TAG.rail], ' svg', { fill: 'var(--sf-side-text)' }));
     // Suppress hover — single flat color, no hover change (Slack's sidebar has no hover highlight).
     // Also suppresses Google's own hover rules on these elements.
-    parts.push(mk('sidebar', [TAG.rail], ' :is(button,[role="button"],[role="listitem"],[jsaction]):hover', { 'background-color': 'transparent' }));
+    // Hover: kill GChat's grey fill on EVERY rail element (it sits on a [role="link"]/inner div the
+    // old :is() list missed), then add Slack's subtle theme-tinted hover on the row itself.
+    parts.push(mk('sidebar', [TAG.rail], ' *:hover', { 'background-color': 'transparent' }));
+    parts.push(mk('sidebar', [TAG.rail], ' [role="listitem"]:hover', { 'background-color': 'var(--sf-side-hover-overlay)' }));
 
     // ===== TOP BAR =====
     parts.push(mk('topbar', SEL.topBar, '', { 'background-color': 'var(--sf-top-bg)' }));
@@ -102,6 +105,8 @@
     // ===== ACTIVE CONVERSATION (after sidebar so it wins) =====
     parts.push(mk('activeconv', [TAG.active], '', { 'background-color': 'var(--sf-side-active-bg)', 'border-radius': '6px' }));
     parts.push(mk('activeconv', [TAG.active], ' *:not(img)', { color: 'var(--sf-side-active-text)' }));
+    // keep the selected item's theme color on hover (Slack behaviour) — beats the rail *:hover reset
+    parts.push(mk('activeconv', [`${TAG.active}:hover`], '', { 'background-color': 'var(--sf-side-active-bg)' }));
 
     // ===== UNREAD (scoped to the rail so message-area text is never re-weighted) =====
     parts.push(mk('unreadbold', [`${TAG.rail} [data-is-unread="true"]`], '', { 'font-weight': '700' }));
@@ -143,7 +148,9 @@
     // [data-user-mention-type] is Google's own marker on inline @mentions (never avatars/names).
     // Give it a tinted rounded background + readable blue text, both mode-reactive (vars in MODES).
     parts.push(mk('mentionpills', SEL.userMention, '', { 'background-color': 'var(--sf-mention-pill-bg)', color: 'var(--sf-mention-pill-text)', 'border-radius': '4px', padding: '0 3px', 'font-weight': '600' }));
-    parts.push(mk('mentionpills', SEL.userMention, ' *', { color: 'var(--sf-mention-pill-text)' }));
+    // GChat's inner mention anchor has its own opaque white chip — neutralize it so only our outer
+    // tinted pill shows (otherwise a white box appears behind the pill).
+    parts.push(mk('mentionpills', SEL.userMention, ' *', { color: 'var(--sf-mention-pill-text)', 'background-color': 'transparent' }));
 
     // ===== REACTION PILLS =====
     parts.push(mk('pills', SEL.reaction, '', { 'border-radius': '12px' }));
@@ -168,6 +175,9 @@
       'font-size': '0.875em',
       'color': 'var(--sf-code-text)',   // Slack-style: crimson in light mode, orange in dark mode
     }));
+    // GChat puts the code TEXT in a child of the tagged <code>/<pre>, with its own color — so color
+    // descendants too (the wrapper color alone doesn't reach the text).
+    parts.push(mk('codestyle', [TAG.codeEl], ' *', { 'color': 'var(--sf-code-text)' }));
 
     // ===== MEETINGS in the Home feed (opt-in declutter) =====
     // SEL.meetingRow keys off data-group-type="10", which exists ONLY on Home-feed rows — so these

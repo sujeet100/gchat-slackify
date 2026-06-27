@@ -6,6 +6,22 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-06-27
+
+### Fixed
+- **Inline code / `pre` text color** now applies (crimson light / orange dark) — the color also
+  targets the text child, not just the wrapper.
+- **Mention pills**: removed the white box behind the chip (GChat's inner anchor had its own opaque
+  white background; inner backgrounds are now transparent so only the tinted pill shows).
+- **Sidebar hover**: replaced GChat's grey hover fill with Slack's subtle theme-tinted hover (the
+  grey sat on a `[role="link"]` the old rule missed), and the selected item now keeps its color on
+  hover instead of turning grey.
+
+### Changed
+- **Left-align your messages** (`selfmessages`) is now **default OFF / experimental** — GChat gives
+  self-messages no avatar, so left-aligned they look orphaned, and freshly-sent messages re-render
+  back to the right. Kept as an opt-in toggle pending a better approach.
+
 ## [0.10.0] — 2026-06-27
 
 ### Added
