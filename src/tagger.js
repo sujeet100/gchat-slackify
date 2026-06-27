@@ -65,6 +65,35 @@
     }
   }
 
+  // ---- open-space header title (for the "#" prefix when a SPACE is open) ----
+  // The conversation header title sits in a button[aria-haspopup="menu"] near the top, right of the
+  // rail (it's NOT inside [role="main"]). The title is the largest-font leaf text in it. Only spaces
+  // get a "#". Cached by group-id so getComputedStyle runs only on a conversation switch.
+  let lastHeaderGid;
+  function tagSpaceHeader(pane) {
+    const g = (pane && pane.getAttribute('data-group-id')) || '';
+    if (g === lastHeaderGid) return;
+    lastHeaderGid = g;
+    const ex = document.querySelector('[data-slackify="space-header"]');
+    if (ex) ex.removeAttribute('data-slackify');
+    if (!g.startsWith('space/')) return;
+    const rail = document.querySelector('[data-slackify="rail"]');
+    const railRight = rail ? rail.getBoundingClientRect().right : 320;
+    let best = null, bestSize = 18;
+    for (const btn of document.querySelectorAll('button[aria-haspopup="menu"]')) {
+      const r = btn.getBoundingClientRect();
+      if (r.top > 130 || r.left < railRight || r.width === 0) continue;
+      for (const el of btn.querySelectorAll('span')) {
+        if (el.children.length) continue;
+        const t = (el.textContent || '').trim();
+        if (!t || t.length > 40) continue;
+        const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
+        if (fs > bestSize) { bestSize = fs; best = el; }
+      }
+    }
+    if (best) best.setAttribute('data-slackify', 'space-header');
+  }
+
   // ---- centered max-width message column; cached ----
   function tagStream(pane) {
     if (document.querySelector('[data-slackify="stream"]')) return;
@@ -102,6 +131,29 @@
     for (const el of toTag) tagDate(el);
   }
 
+  // ---- thread reply affordance: tag the clickable button + the "N replies" count span ----
+  // Hook: [data-last-reply-time-msec] (Google-owned, locale-independent, on every thread row).
+  // Cached per container (WeakSet); no getComputedStyle. CSS makes it a Slack-style link chip.
+  const threadScanned = new WeakSet();
+  function scanThreadReplies(pane) {
+    if (!pane) return;
+    const chips = [], counts = [];
+    for (const cont of pane.querySelectorAll('[data-last-reply-time-msec]')) {
+      if (threadScanned.has(cont)) continue;
+      threadScanned.add(cont);
+      for (const sp of cont.querySelectorAll('span')) {
+        if (sp.children.length) continue;
+        if (/^\s*\d+\s*repl(y|ies)\s*$/i.test(sp.textContent || '')) {
+          counts.push(sp);
+          chips.push(sp.closest('[role="button"]') || cont);
+          break;
+        }
+      }
+    }
+    for (const el of chips) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'thread-chip');
+    for (const el of counts) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'reply-count');
+  }
+
   // ---- status chip: first button in the topbar with a visible (non-transparent) background ----
   // The "Active/Busy/DND" pill is the only button in [role="banner"] with its own background.
   // Tagged once; our topbar CSS would otherwise make its text white-on-white (unreadable).
@@ -123,17 +175,30 @@
     const ex = document.querySelector('[data-slackify="composer"]');
     if (ex && ex.isConnected) return;
     if (ex) ex.removeAttribute('data-slackify');
+    for (const p of document.querySelectorAll('[data-slackify="composer-pill"], [data-slackify="composer-wrap"]')) {
+      if (!p.isConnected) p.removeAttribute('data-slackify');   // drop stale tags on conversation switch
+    }
     const tb = document.querySelector('[role="main"] [role="textbox"]');
     if (!tb) return;
     // The composer's visible background lives on the first OPAQUE, wide-enough ancestor of the
     // textbox (the white box wrapping the input + toolbar) — the inner layers are transparent.
-    // Box THAT to get a Slack-style bordered composer.
+    // Box THAT to get a Slack-style bordered composer. Along the way, tag GChat's rounded input
+    // PILL(s) (radius >= 16) so CSS can flatten them — otherwise GChat's rounded pill shows inside
+    // our box (the released "pill-in-a-box" look) whenever Chat paints the pill background.
     let el = tb;
     for (let i = 0; i < 10 && el; i++) {
       const cs = getComputedStyle(el);
+      const wide = el.getBoundingClientRect().width > 300;
+      if (wide && (parseFloat(cs.borderTopLeftRadius) || 0) >= 16) el.setAttribute('data-slackify', 'composer-pill');
       const m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
       const opaque = m && (m[4] === undefined || +m[4] > 0.5);
-      if (opaque && el.getBoundingClientRect().width > 300) { el.setAttribute('data-slackify', 'composer'); return; }
+      if (opaque && wide) {
+        el.setAttribute('data-slackify', 'composer');
+        // tag the centering wrapper so the full-width feature can left-align + widen the box to
+        // match the (full-width) messages instead of leaving it centered.
+        if (el.parentElement) el.parentElement.setAttribute('data-slackify', 'composer-wrap');
+        return;
+      }
       el = el.parentElement;
     }
   }
@@ -145,7 +210,7 @@
     const nodes = topic.querySelectorAll('div, span');
     if (!nodes.length) { topicIO.observe(topic); return; }   // skeleton not filled yet → retry later
     processedTopics.add(topic);
-    const bubbles = [], codes = [], dates = [];
+    const bubbles = [], dates = [], wides = [];
     for (const el of nodes) {                                 // READ phase
       if (el.hasAttribute('data-slackify')) continue;
       if (el.children.length === 0) {
@@ -153,11 +218,11 @@
         if (t && t.length <= 40 && isDate(t)) { dates.push(el); continue; }
       }
       const cs = getComputedStyle(el);
-      // Monospace = code block/inline code — tag for codestyle feature, skip bubble detection.
-      if (/mono/i.test(cs.fontFamily || '')) {
-        if ((el.textContent || '').trim()) codes.push(el);
-        continue;
-      }
+      // GChat caps message content at ~640px (max-width: min(90%, 640px)); on a wide window that
+      // wastes the right side. Mark capped containers so the full-width feature can lift the cap.
+      const mwm = (cs.maxWidth || '').match(/(\d+(?:\.\d+)?)px/);
+      if (mwm && cs.maxWidth !== 'none') { const px = +mwm[1]; if (px >= 360 && px <= 900) wides.push(el); }
+      // (Code/pre styling targets the <code>/<pre> tags directly in CSS — no tagging needed here.)
       const r = parseFloat(cs.borderTopLeftRadius) || 0;
       if (r < 4) continue;
       if (!(el.textContent || '').trim()) continue;
@@ -166,18 +231,29 @@
       if (isGrey(bg) || (r >= 12 && bg && bg.a > 0.4 && !isWhite(bg))) bubbles.push(el);
     }
     // Detect circular avatar wrapper divs (border-radius ≥ 12 on img parent = clipping circle).
-    // Tagging the wrapper lets CSS square it without :has() in the stylesheet.
-    const avatarWraps = [];
+    // Tagging the wrapper lets CSS square it without :has() in the stylesheet. For each avatar, also
+    // walk up to the wide FLEX row (avatar | name+content) and tag it "msgrow" so CSS can top-align
+    // it (GChat centers the avatar against multi-line messages; Slack pins it to the top).
+    const avatarWraps = [], msgRows = [];
     for (const img of topic.querySelectorAll('img')) {
       const p = img.parentElement;
       if (!p || p.hasAttribute('data-slackify')) continue;
       const r = parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0;
-      if (r >= 12) avatarWraps.push(p);
+      if (r >= 12) {
+        avatarWraps.push(p);
+        let row = p.parentElement;
+        for (let i = 0; i < 6 && row && row !== topic; i++) {
+          const cs = getComputedStyle(row);
+          if (cs.display === 'flex' && row.getBoundingClientRect().width > 200) { msgRows.push(row); break; }
+          row = row.parentElement;
+        }
+      }
     }
     for (const el of dates) tagDate(el);                      // WRITE phase
     for (const el of bubbles) el.setAttribute('data-slackify', 'bubble');
-    for (const el of codes) el.setAttribute('data-slackify', 'code');
+    for (const el of wides) el.setAttribute('data-slackify-wide', '');   // separate attr (orthogonal to bubble)
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
+    for (const el of msgRows) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'msgrow');
   }
 
   // ---- avatar wrappers OUTSIDE the message stream (rail + Home feed) ----
@@ -191,16 +267,46 @@
     for (const row of document.querySelectorAll('[role="listitem"][data-group-type]')) {  // Home feed
       for (const img of row.querySelectorAll('img')) imgs.push(img);
     }
+    // conversation header avatar (incl. group clusters) — it lives in the header's menu button.
+    for (const img of document.querySelectorAll('button[aria-haspopup="menu"] img')) imgs.push(img);
     const wraps = [];
     for (const img of imgs) {                                   // READ
       if (seenAvatars.has(img)) continue;
       seenAvatars.add(img);
-      const p = img.parentElement;
-      if (!p || p.hasAttribute('data-slackify')) continue;
-      const r = parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0;
-      if (r >= 8) wraps.push(p);
+      // Walk up and tag EVERY round clip: the single-avatar wrapper AND the outer circle of a
+      // member cluster (which sits several levels above the <img>, so checking only the direct
+      // parent — as before — missed it). overflow:hidden distinguishes a real avatar clip.
+      let e = img.parentElement;
+      for (let i = 0; i < 6 && e && e !== rail; i++) {
+        if (!e.hasAttribute('data-slackify')) {
+          const cs = getComputedStyle(e);
+          if ((parseFloat(cs.borderTopLeftRadius) || 0) >= 8 && cs.overflow === 'hidden') wraps.push(e);
+        }
+        e = e.parentElement;
+      }
     }
     for (const p of wraps) p.setAttribute('data-slackify', 'avatar-wrap');   // WRITE
+  }
+
+  // ---- space-name spans (for the opt-in "#" prefix) ----
+  // The sidebar space name has only a hashed class; the durable signal is structural — it's the
+  // first non-empty span[role="presentation"] in the space row. Cached per row (WeakSet), no
+  // getComputedStyle. Tagged regardless of the feature toggle (cheap); CSS is feature-gated.
+  const spaceNamed = new WeakSet();
+  function scanSpaceNames(rail) {
+    // Scope to the Spaces LIST only, so the "#" lands on real channels — not group-DMs (also
+    // data-group-id^="space/" but in the DM list) or meeting rows (in the Meetings list).
+    const list = C.firstMatchEl('spacesList') || rail;
+    if (!list) return;
+    const toTag = [];
+    for (const row of list.querySelectorAll('[role="listitem"][data-group-id^="space/"]')) {
+      if (spaceNamed.has(row)) continue;
+      spaceNamed.add(row);
+      for (const sp of row.querySelectorAll('span[role="presentation"]')) {
+        if ((sp.textContent || '').trim()) { toTag.push(sp); break; }   // first with text = the name
+      }
+    }
+    for (const el of toTag) el.setAttribute('data-slackify', 'spacename');
   }
 
   // ---- lazy topic discovery: observe topics, queue only the visible ones (± one viewport) ----
@@ -233,9 +339,11 @@
       const pane = C.firstMatchEl('conversationPane');
       const rail = document.querySelector('[data-slackify="rail"]');
       try { tagActiveRow(pane, rail); } catch (e) {}
+      try { tagSpaceHeader(pane); } catch (e) {}
       try { scanAvatars(rail); } catch (e) {}
+      try { scanSpaceNames(rail); } catch (e) {}
       try { if (pane) tagStream(pane); } catch (e) {}
-      if (pane) { try { scanDates(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} }
+      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} }
     }
     const hasTime = () => !deadline || typeof deadline.timeRemaining !== 'function' || deadline.timeRemaining() > 3;
     for (const t of topicQueue) {

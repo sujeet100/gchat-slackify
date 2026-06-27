@@ -52,6 +52,28 @@
     // on real inline mentions (verified live: 5/5 mentions; never on avatars or author-name spans,
     // which carry data-member-id but NOT this). Types seen: 6 (user), 3 (group/@all) — both chip.
     userMention:      ['[data-user-mention-type]'],
+    // Inline code (<code>) and code blocks (<pre>) in the message stream. These are DURABLE
+    // SEMANTIC tags: GChat puts the monospace font directly on them (the inner spans are NOT
+    // monospace — verified live), so we target the tags themselves — no tagger / hashed-class
+    // needed, self-heals on re-render, zero perf cost. Scoped to [role="main"] so only message
+    // content is styled.
+    codeInline:       ['[role="main"] code'],
+    codeBlock:        ['[role="main"] pre'],
+    // Thread reply affordance ("N replies · Last reply …"). data-last-reply-time-msec is Google-owned
+    // and locale-independent, present on every thread-with-replies row → a durable hook. tagger.js
+    // tags the clickable button + the count span so CSS can render a Slack-style link chip.
+    threadReply:      ['[role="main"] [data-last-reply-time-msec]'],
+    // top-search dropdown (autocomplete results shown when the search is focused)
+    searchInput:        ['[role="search"] input', '[role="search"] [contenteditable]'],
+    searchDropdown:     ['[role="search"] [role="listbox"]'],
+    searchDropdownItem: ['[role="search"] [role="option"]', '[role="search"] li', '[role="search"] [role="listbox"]'],
+    // message-area containers — used to suppress GChat's own grey hover/active fills
+    mainRow:          ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'],
+    messageContainer: ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'],
+    messageToolbar:   ['[role="main"] [role="toolbar"]'],
+    // author-name wrapper: span[data-name][data-is-message] (durable Google attrs). The VISIBLE name
+    // is a child span (it sets its own size via a hashed class — styles.js sizes the child too).
+    senderName:       ['[role="main"] span[data-name][data-is-message]'],
     // interactive elements within the rail (used for hover theming)
     railInteractive:  ['button', '[role="button"]', '[role="listitem"]', '[jsaction]'],
   };
@@ -61,15 +83,24 @@
   // constantly-mutating DOM is expensive (jank) AND a broad :has() fallback over-matches
   // (painting the conversation pane). The rail is resolved in JS and tagged "rail" instead.
   const TAGS = {
-    rail:       '[data-slackify="rail"]',
-    bubble:     '[data-slackify="bubble"]',
-    lightbtn:   '[data-slackify="lightbtn"]',
-    active:     '[role="listitem"][data-slackify="active"]',
-    stream:     '[data-slackify="stream"]',
-    date:       '[data-slackify="date"]',
+    rail:        '[data-slackify="rail"]',
+    bubble:      '[data-slackify="bubble"]',
+    lightbtn:    '[data-slackify="lightbtn"]',
+    active:      '[role="listitem"][data-slackify="active"]',
+    stream:      '[data-slackify="stream"]',
+    date:        '[data-slackify="date"]',
+    dateWrap:    '[data-slackify="datewrap"]',
     statusChip:  '[data-slackify="status-chip"]',
-    codeEl:      '[data-slackify="code"]',
     avatarWrap:  '[data-slackify="avatar-wrap"]',
+    composer:    '[data-slackify="composer"]',
+    composerWrap:'[data-slackify="composer-wrap"]',
+    composerPill:'[data-slackify="composer-pill"]',
+    msgRow:      '[data-slackify="msgrow"]',
+    msgWide:     '[data-slackify-wide]',
+    spaceName:   '[data-slackify="spacename"]',
+    spaceHeader: '[data-slackify="space-header"]',
+    threadChip:  '[data-slackify="thread-chip"]',
+    replyCount:  '[data-slackify="reply-count"]',
   };
 
   // Independently toggleable features. attr = html[data-sf-feat-<id>].
@@ -83,12 +114,17 @@
     { id: 'rowhover',     label: 'Row hover highlight',     default: true,  desc: 'Slack-style hover on rows and messages' },
     { id: 'activeconv',   label: 'Highlight open chat',     default: true,  desc: 'Accent the currently open conversation' },
     { id: 'unreadbold',   label: 'Bold unread',             default: true,  desc: 'Embolden unread conversations' },
+    { id: 'spacehash',    label: '“#” on space names',       default: true,  desc: 'Prefix space/channel names with a “#” in the sidebar, like Slack channels' },
     { id: 'datedividers', label: 'Date dividers',           default: true,  desc: 'Slack-style date separators with a divider line' },
     { id: 'pills',        label: 'Reaction pills',          default: true,  desc: 'Rounded reaction chips' },
     { id: 'avatarshape',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
+    { id: 'sendername',   label: 'Prominent sender names',   default: true,  desc: 'Show message sender names bold and slightly larger, like Slack' },
+    { id: 'msgalign',     label: 'Slack message layout',     default: true,  desc: 'Top-align the avatar with the sender name and enlarge it, like Slack' },
+    { id: 'threadreplies',label: 'Slack-style thread replies',default: true,  desc: 'Show the “N replies” thread affordance as a Slack-style link chip' },
     { id: 'codestyle',    label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },
     { id: 'mentionpills', label: 'Mention pills',           default: true,  desc: 'Show @mentions as Slack-style rounded chips with a tinted background' },
     { id: 'composer',     label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
+    { id: 'unreadswitch', label: 'Visible “Unread” switch',  default: true,  desc: 'Give the Home “Unread” filter a clear themed color when it is ON (GChat’s default ON state is nearly invisible)' },
     { id: 'hidemeetings', label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
     { id: 'dimmeetings',  label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },
   ];

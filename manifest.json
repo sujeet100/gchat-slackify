@@ -1,10 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Slackify for Google Chat",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Make Google Chat look and feel like Slack — themes, Lato font, auto light/dark, toggles. Cosmetic only; no data leaves your browser.",
   "homepage_url": "https://github.com/REPLACE_ME/gchat-slackify",
   "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "web_accessible_resources": [
     {
       "resources": ["fonts/*.woff2"],
@@ -13,7 +18,12 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Slackify for Google Chat"
+    "default_title": "Slackify for Google Chat",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "content_scripts": [
     {

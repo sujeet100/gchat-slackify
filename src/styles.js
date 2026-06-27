@@ -16,6 +16,10 @@
   const { THEMES, MODES } = globalThis.SLACKIFY_THEMES;
   const SEL = C.SELECTORS, TAG = C.TAGS;
 
+  // Scope a selector under the conversation pane ([role="main"]) using the centralized selector,
+  // so even composite "in the message area" rules don't hard-code the role string.
+  const inMain = (s) => SEL.conversationPane.map((p) => `${p} ${s}`);
+
   const decls = (o) => Object.entries(o).map(([k, v]) => `  ${k}: ${v} !important;`).join('\n');
 
   // mk(feature|null, selectorsArray, extra, declsObj)
@@ -41,7 +45,7 @@
           `html[data-sf-theme="${t.id}"][data-sf-mode="${mode}"]{` +
           `--sf-side-bg:${m.bg};--sf-side-active-bg:${m.active};` +
           `--sf-side-active-text:${m.activeText};--sf-side-text:${m.text};` +
-          `--sf-top-bg:${m.bg};--sf-top-text:${m.text};` +
+          `--sf-top-bg:${m.topBg};--sf-top-text:${m.topText};` +
           `--sf-presence:${m.presence};--sf-mention:${m.mention};` +
           `--sf-side-hover-overlay:${m.hoverOverlay};}`
         );
@@ -67,8 +71,8 @@
     // Set font-family on CONTAINERS only (not "*") so text inherits Lato while Material icon
     // fonts on icon elements keep their own family and don't turn into letters.
     parts.push(mk('typography', [TAG.rail], '', { 'font-family': 'var(--sf-font)' }));
-    parts.push(mk('typography', ['[role="main"]'], '', { 'font-family': 'var(--sf-font)' }));
-    parts.push(mk('typography', ['[role="textbox"]'], '', { 'font-family': 'var(--sf-font)' }));
+    parts.push(mk('typography', SEL.conversationPane, '', { 'font-family': 'var(--sf-font)' }));
+    parts.push(mk('typography', SEL.composeBox, '', { 'font-family': 'var(--sf-font)' }));
     parts.push(mk('typography', SEL.messageTopic, '', { 'line-height': '1.46' }));
 
     // ===== SIDEBAR =====
@@ -94,13 +98,15 @@
     parts.push(mk('topbar', SEL.search, '', { 'background-color': 'rgba(127,127,127,0.18)', 'border-radius': '6px' }));
     parts.push(mk('topbar', SEL.search, ' *:not(img)', { color: 'var(--sf-top-text)' }));
     // Search input placeholder — color doesn't inherit automatically in Chrome.
-    parts.push(mk('topbar', ['[role="search"] input', '[role="search"] [contenteditable]'], '::placeholder', { color: 'rgba(255,255,255,0.65)', opacity: '1' }));
+    parts.push(mk('topbar', SEL.searchInput, '::placeholder', { color: 'rgba(255,255,255,0.65)', opacity: '1' }));
     // Search dropdown: use mode-aware background/text so light mode = white, dark mode = dark.
-    parts.push(mk('topbar', ['[role="search"] [role="listbox"]'], '', { 'background-color': 'var(--sf-search-drop-bg)', color: 'var(--sf-search-drop-text)', 'border-radius': '4px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.2)' }));
-    parts.push(mk('topbar', ['[role="search"] [role="option"]', '[role="search"] li', '[role="search"] [role="listbox"]'], ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
-    // Status chip (Active/Busy pill) has its own white/light background — needs dark text.
-    parts.push(mk('topbar', [TAG.statusChip], '', { color: 'var(--sf-status-chip-text)' }));
-    parts.push(mk('topbar', [TAG.statusChip], ' *:not(img):not(svg)', { color: 'var(--sf-status-chip-text)' }));
+    parts.push(mk('topbar', SEL.searchDropdown, '', { 'background-color': 'var(--sf-search-drop-bg)', color: 'var(--sf-search-drop-text)', 'border-radius': '4px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.2)' }));
+    parts.push(mk('topbar', SEL.searchDropdownItem, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    // Status chip (Active/Busy pill): GChat gives it a light background that clashes on our dark top
+    // bar. Give it the same translucent "dark-theme" treatment as the search box so it blends in —
+    // its text is whitened by the [role="banner"] * rule above, and the colored presence dot (a
+    // bg-colored <div>, not an svg) keeps its own color.
+    parts.push(mk('topbar', [TAG.statusChip], '', { 'background-color': 'rgba(255,255,255,0.16)' }));
 
     // ===== ACTIVE CONVERSATION (after sidebar so it wins) =====
     parts.push(mk('activeconv', [TAG.active], '', { 'background-color': 'var(--sf-side-active-bg)', 'border-radius': '6px' }));
@@ -109,7 +115,7 @@
     parts.push(mk('activeconv', [`${TAG.active}:hover`], '', { 'background-color': 'var(--sf-side-active-bg)' }));
 
     // ===== UNREAD (scoped to the rail so message-area text is never re-weighted) =====
-    parts.push(mk('unreadbold', [`${TAG.rail} [data-is-unread="true"]`], '', { 'font-weight': '700' }));
+    parts.push(mk('unreadbold', SEL.unreadRow.map((s) => `${TAG.rail} ${s}`), '', { 'font-weight': '700' }));
 
     // ===== MESSAGES: flatten / density / full-width / hover =====
     // flatten: remove ALL background/padding/margin from tagged bubbles so messages appear flat.
@@ -118,24 +124,48 @@
     parts.push(mk('flatten', [TAG.bubble], ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
     // Suppress Google's own per-element hover highlight within messages (creates a weird inner glow).
     // Scoped to [role="main"] so it doesn't affect the sidebar.
-    parts.push(mk('flatten', ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'], ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
+    parts.push(mk('flatten', SEL.mainRow, ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
     // padding-bottom gives the gap to the next message. Reactions are the last thing in a topic, so
     // a few px here stops messages-with-reactions from crowding the next one — still compact.
     parts.push(mk('density', SEL.messageTopic, '', { 'padding-top': '1px', 'padding-bottom': '5px', 'gap': '0' }));
     parts.push(mk('fullwidth', [TAG.stream], '', { 'max-width': 'none', 'margin-left': '0', 'margin-right': '0', width: 'auto', 'align-self': 'stretch' }));
     parts.push(mk('fullwidth', SEL.messageTopic, '', { 'padding-left': '16px', 'padding-right': '16px', 'align-self': 'flex-start', 'margin-left': '0', 'margin-right': '0', width: '100%', 'box-sizing': 'border-box' }));
+    // Lift GChat's ~640px message-content cap (tagger marks capped containers) so text uses the full
+    // width instead of leaving the right side empty.
+    parts.push(mk('fullwidth', [TAG.msgWide], '', { 'max-width': 'none' }));
+    // Left-align + widen the composer to match the full-width messages (it's centered by default).
+    // tagger tags the composer's centering wrapper as [data-slackify="composer-wrap"].
+    parts.push(mk('fullwidth', [TAG.composerWrap], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'justify-content': 'flex-start' }));
+    parts.push(mk('fullwidth', [TAG.composer], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'margin-left': '16px', 'margin-right': '16px' }));
     parts.push(mk('rowhover', SEL.messageTopic, ':hover', { 'background-color': 'var(--sf-msg-hover)' }));
     // Kill GChat's grey hover/active fill on the message containers (incl. when the reaction/action
     // toolbar appears) so only our subtle Slack-style row hover shows. Scoped to [role=main].
-    parts.push(mk('rowhover', ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'], ':hover', { 'background-color': 'transparent' }));
+    parts.push(mk('rowhover', SEL.messageContainer, ':hover', { 'background-color': 'transparent' }));
 
-    // ===== COMPOSER (flatten the rounded pill into a Slack-style bordered box) =====
-    // tagger.js tags the rounded composer container [data-slackify="composer"].
-    parts.push(mk('composer', ['[data-slackify="composer"]'], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)' }));
+    // ===== COMPOSER (flatten GChat's rounded pill into a Slack-style bordered box) =====
+    // tagger.js tags the opaque card [data-slackify="composer"] (gets the box border) and GChat's
+    // rounded input pill(s) [data-slackify="composer-pill"] (radius flattened + bg cleared) so the
+    // composer reads as ONE clean bordered box rather than a rounded pill sitting inside a box.
+    parts.push(mk('composer', [TAG.composer], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)' }));
+    parts.push(mk('composer', [TAG.composerPill], '', { 'border-radius': '8px', 'background-color': 'transparent' }));
+    // Neutralize GChat's blue fills inside the box (the blue "+" button and the send button) so the
+    // white card shows through — a clean Slack composer. Scope to the BUTTONS only (plus the input
+    // pill, handled above) — NOT all descendants — so menus/popups rendered inside the composer keep
+    // their own background and don't turn see-through.
+    parts.push(mk('composer', [`${TAG.composer} button`, `${TAG.composer} [role="button"]`], '', { 'background-color': 'transparent' }));
+
+    // ===== UNREAD FILTER SWITCH (make the ON state visible) =====
+    // GChat's "Unread" toggle turns a very pale blue-grey when ON, which vanishes against the light
+    // Home background. Fill the track (the switch's single child div) with the theme accent so "on"
+    // is unmistakable. aria-label is localized → degrades gracefully on non-English UIs (same caveat
+    // as the in-page meetings toggle).
+    // Target ONLY the track (the switch's first child div) so the white thumb is never recolored,
+    // and use a lighter tint of the brand so it reads as a soft "on" state, not a heavy dark blob.
+    parts.push(mk('unreadswitch', SEL.unreadToggle, '[aria-checked="true"] > div:first-child', { 'background-color': 'color-mix(in srgb, var(--sf-side-active-bg) 78%, white)' }));
 
     // ===== DATE DIVIDERS (Slack pill on a divider line) =====
-    parts.push(mk('datedividers', ['[data-slackify="datewrap"]'], '', { position: 'relative', 'text-align': 'center' }));
-    parts.push(mk('datedividers', ['[data-slackify="datewrap"]'], '::before', { content: '""', position: 'absolute', left: '16px', right: '16px', top: '50%', 'border-top': '1px solid var(--sf-date-line)', 'z-index': '0' }));
+    parts.push(mk('datedividers', [TAG.dateWrap], '', { position: 'relative', 'text-align': 'center' }));
+    parts.push(mk('datedividers', [TAG.dateWrap], '::before', { content: '""', position: 'absolute', left: '16px', right: '16px', top: '50%', 'border-top': '1px solid var(--sf-date-line)', 'z-index': '0' }));
     parts.push(mk('datedividers', [TAG.date], '', { position: 'relative', 'z-index': '1', display: 'inline-block', 'background-color': 'var(--sf-date-bg)', color: 'var(--sf-date-text)', border: '1px solid var(--sf-date-line)', 'border-radius': '12px', padding: '2px 12px', 'font-size': '12px', 'font-weight': '700' }));
 
     // ===== MENTION PILLS (Slack-style @mention chips) =====
@@ -149,7 +179,7 @@
     // ===== REACTION PILLS =====
     parts.push(mk('pills', SEL.reaction, '', { 'border-radius': '12px' }));
     // Message hover toolbar — set white background so the reaction shortcuts match Slack's style.
-    parts.push(mk('pills', ['[role="main"] [role="toolbar"]'], '', { 'background-color': '#ffffff', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
+    parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': '#ffffff', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
 
     // ===== SQUARE AVATARS (Slack uses ~3px radius instead of 50% circles) =====
     // tagger.js detects the circular wrapper div (border-radius >= 12px on img parent) and stamps
@@ -157,21 +187,71 @@
     // otherwise the circular clip still applies.
     parts.push(mk('avatarshape', SEL.messageTopic, ' img', { 'border-radius': '3px' }));
     parts.push(mk('avatarshape', [TAG.avatarWrap], '', { 'border-radius': '3px', 'overflow': 'hidden' }));
+    // (avatar size bump lives in msgalign, scoped to the message area via inMain)
 
-    // ===== CODE BLOCK STYLING (Slack-like monospace formatting) =====
-    // tagger.js detects monospace elements and stamps [data-slackify="code"].
-    // No performance overhead: detection re-uses getComputedStyle calls already made per-topic.
-    parts.push(mk('codestyle', [TAG.codeEl], '', {
+    // ===== SENDER NAME PROMINENCE (Slack-style bold, slightly larger author name) =====
+    // GChat's author name wrapper is span[data-name][data-is-message] (durable Google attrs); the
+    // VISIBLE name is a child span that sets its own 12px via a hashed class, so size that child too.
+    parts.push(mk('sendername', SEL.senderName, '', { 'font-weight': '700' }));
+    parts.push(mk('sendername', SEL.senderName, ' span', { 'font-weight': '700', 'font-size': '15px' }));
+
+    // ===== MESSAGE LAYOUT (top-align avatar with the sender name; enlarge it, Slack-style) =====
+    // tagger.js tags the wide flex row (avatar | name+content) as [data-slackify="msgrow"] so we
+    // can flip its cross-axis alignment to the top (GChat centers it). The message avatar is also
+    // enlarged 32px → 36px (wrapper + img together) to match Slack's heavier message header.
+    parts.push(mk('msgalign', [TAG.msgRow], '', { 'align-items': 'flex-start' }));
+    // GChat gives the avatar column a top margin so the avatar lines up with the message body (below
+    // the name). Zero it so the avatar pins to the very top, aligned with the sender name (Slack).
+    parts.push(mk('msgalign', [TAG.msgRow], ' > div', { 'margin-top': '0' }));
+    // Tighten the gap between the avatar column and the message content (GChat leaves ~16px; Slack
+    // sits closer). Applies to the avatar column (the row's first child).
+    parts.push(mk('msgalign', [TAG.msgRow], ' > div:first-child', { 'margin-right': '8px' }));
+    parts.push(mk('msgalign', inMain(TAG.avatarWrap), '', { width: '36px', height: '36px', 'min-width': '36px' }));
+    parts.push(mk('msgalign', inMain(`${TAG.avatarWrap} img`), '', { width: '36px', height: '36px' }));
+
+    // ===== THREAD REPLIES (Slack-style "N replies" link chip) =====
+    // tagger.js tags the clickable reply affordance [data-slackify="thread-chip"] and the count
+    // span [data-slackify="reply-count"]. GChat shows no participant avatars in this affordance, so
+    // we just turn it into a bordered chip and make the reply count a blue link (mode-reactive).
+    // Slack's thread affordance has no permanent border — just a hover highlight; match that.
+    parts.push(mk('threadreplies', [TAG.threadChip], '', {
+      'display': 'inline-flex', 'align-items': 'center', 'gap': '6px',
+      'padding': '2px 8px', 'border-radius': '12px', 'margin-top': '4px', 'cursor': 'pointer',
+    }));
+    parts.push(mk('threadreplies', [TAG.threadChip], ':hover', { 'background-color': 'var(--sf-msg-hover)', 'box-shadow': 'inset 0 0 0 1px var(--sf-border)' }));
+    parts.push(mk('threadreplies', [TAG.replyCount], '', { 'color': 'var(--sf-mention-pill-text)', 'font-weight': '600' }));
+
+    // ===== "#" PREFIX ON SPACE NAMES (Slack channel style) =====
+    // tagger.js tags the sidebar space-name span [data-slackify="spacename"] and the open-space
+    // header title [data-slackify="space-header"]. Prepend a "#" with a Slack-like gap (margin, not
+    // just a space char) before the name.
+    parts.push(mk('spacehash', [TAG.spaceName, TAG.spaceHeader], '::before', { content: '"#"', 'margin-right': '8px', opacity: '0.7' }));
+
+    // ===== CODE / PRE STYLING (Slack-like inline code + code blocks) =====
+    // GChat renders inline code as <code> and code blocks as <pre>; the monospace font lives on
+    // THOSE elements (durable semantic tags), not on a div/span — so we target them directly
+    // (SEL.codeInline / SEL.codeBlock). No tagger, self-heals on re-render, zero perf cost.
+    // Slack convention: inline code = crimson text in a small grey chip; code BLOCK = normal text
+    // color in a bordered grey box (NOT crimson). The text can sit in a child span → color
+    // descendants too (the element's own color alone doesn't always reach the text).
+    parts.push(mk('codestyle', SEL.codeInline, '', {
       'background-color': 'var(--sf-code-bg)',
       'border': '1px solid var(--sf-code-border)',
       'border-radius': '3px',
       'padding': '1px 4px',
       'font-size': '0.875em',
-      'color': 'var(--sf-code-text)',   // Slack-style: crimson in light mode, orange in dark mode
+      'color': 'var(--sf-code-text)',   // Slack inline-code crimson (light) / orange (dark)
     }));
-    // GChat puts the code TEXT in a child of the tagged <code>/<pre>, with its own color — so color
-    // descendants too (the wrapper color alone doesn't reach the text).
-    parts.push(mk('codestyle', [TAG.codeEl], ' *', { 'color': 'var(--sf-code-text)' }));
+    parts.push(mk('codestyle', SEL.codeInline, ' *', { 'color': 'var(--sf-code-text)' }));
+    parts.push(mk('codestyle', SEL.codeBlock, '', {
+      'background-color': 'var(--sf-code-bg)',
+      'border': '1px solid var(--sf-code-border)',
+      'border-radius': '4px',
+      'padding': '8px 12px',
+      'font-size': '0.875em',
+      'color': 'var(--sf-content-text)',   // code blocks keep the normal text color, not crimson
+    }));
+    parts.push(mk('codestyle', SEL.codeBlock, ' *', { 'color': 'var(--sf-content-text)' }));
 
     // ===== MEETINGS in the Home feed (opt-in declutter) =====
     // SEL.meetingRow keys off data-group-type="10", which exists ONLY on Home-feed rows — so these

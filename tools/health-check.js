@@ -33,6 +33,9 @@
     meetingRow: '[role="listitem"][data-group-type="10"]', // Home feed only; absent on other views
     unreadToggle: 'button[role="switch"][aria-label*="unread" i]', // anchor for the in-page meetings toggle (Home only)
     userMention: '[data-user-mention-type]', // inline @mentions; present only in conversations with mentions
+    codeInline: '[role="main"] code', // inline code <code>; present only in conversations with code
+    codeBlock: '[role="main"] pre', // code blocks <pre>; present only in conversations with code blocks
+    threadReply: '[role="main"] [data-last-reply-time-msec]', // thread reply rows; present only in spaces with threads
   };
 
   const count = (sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return 'INVALID:' + e.message; } };

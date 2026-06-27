@@ -27,18 +27,39 @@
   const mixW = (h, t) => hex(rgb(h).map((v) => v + (255 - v) * t));  // toward white
   const lum = (h) => { const [r, g, b] = rgb(h); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
   const ink = (h) => (lum(h) > 140 ? '#1D1C1D' : '#FFFFFF');         // readable text on bg h
-  const overlay = (bg) => (lum(bg) < 140 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)');
+  const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r}, ${g}, ${b}, ${a})`; };
+  // Hover overlay: Slack's LIGHT themes wash a hovered (non-active) row in a PALE TINT OF THE
+  // BRAND color — never grey; DARK themes use a subtle white wash. So derive it from the brand.
+  const overlay = (bg, active) => (lum(bg) < 140 ? 'rgba(255,255,255,0.08)' : rgba(active, 0.12));
+  // Inactive sidebar text: Slack's LIGHT themes TINT the channel-list text with the brand hue
+  // (aubergine shows clearly PURPLE text, not black). We keep the brand hue but pull it to a
+  // readable luminance on the pale sidebar: a very dark brand (deep purple/indigo) is lightened a
+  // touch so the hue is visible; a lighter mid-tone brand (green/orange) is darkened a touch for
+  // contrast. Light-hued brands (banana/barbra) fall back to near-black so text stays readable.
+  const brandText = (active) => {
+    if (lum(active) > 140) return '#1D1C1D';
+    return lum(active) < 70 ? mixW(active, 0.12) : mixB(active, 0.15);
+  };
 
   const PRESENCE = '#2BAC76', MENTION = '#CD2553';
 
-  // Normalize a palette: fill activeText/presence/mention/hoverOverlay if omitted.
-  const pal = (bg, active, text, activeText, presence, mention) => ({
-    bg, active, text,
-    activeText: activeText || ink(active),
-    presence: presence || PRESENCE,
-    mention: mention || MENTION,
-    hoverOverlay: overlay(bg),
-  });
+  // Normalize a palette: fill activeText/presence/mention/hoverOverlay if omitted, and derive the
+  // TOP-BAR colors. In Slack's LIGHT themes the top nav is the DARK, saturated brand (darker than
+  // the pale channel list) with white text — so light-mode topBg = a deep brand shade. In DARK
+  // mode the top nav matches the dark rail. (topBg/topText decouple the bar from the sidebar.)
+  const pal = (bg, active, text, activeText, presence, mention) => {
+    const lightMode = lum(bg) > 140;
+    const topBg = lightMode ? mixB(active, 0.35) : bg;   // deep saturated brand (light) / dark rail (dark)
+    return {
+      bg, active, text,
+      activeText: activeText || ink(active),
+      presence: presence || PRESENCE,
+      mention: mention || MENTION,
+      hoverOverlay: overlay(bg, active),
+      topBg,
+      topText: lightMode ? ink(topBg) : text,            // white on the dark light-mode bar; rail text in dark
+    };
+  };
 
   // Explicit (sampled) theme with both modes hand-specified.
   const ex = (id, label, isDark, light, dark) => ({ id, label, isDark, modes: { light, dark } });
@@ -53,7 +74,7 @@
     const light = pal(
       mixW(identity, 0.90),                                  // pale tinted sidebar
       isLight ? mixB(identity, 0.20) : identity,             // active = vivid identity (dark hue) / darkened (pale hue)
-      '#1D1C1D',                                             // dark text on the pale sidebar
+      brandText(identity),                                   // brand-tinted text in light mode (Slack look)
       null, o.presence, o.mention
     );
     const dark = pal(o.darkBg || mixB(identity, 0.80), mixW(identity, 0.18), '#D1D2D3', null, o.presence, o.mention);
@@ -65,10 +86,10 @@
     // light = pale tint sidebar + dark text + vivid active (sampled Slack light channel list);
     // dark  = very dark tint of the hue + brighter active.
     ex('aubergine', 'Aubergine', true,
-      pal('#F0E9F0', '#611F69', '#1D1C1D', '#FFFFFF'),
+      pal('#F0E9F0', '#611F69', brandText('#611F69'), '#FFFFFF'),
       pal('#241229', '#7D3986', '#D1D2D3')),
     ex('jade', 'Jade', true,
-      pal('#E8F4F0', '#178F65', '#1D1C1D', '#FFFFFF'),
+      pal('#E8F4F0', '#178F65', brandText('#178F65'), '#FFFFFF'),
       pal('#0D241E', '#106F4D', '#D1D2D3')),
     // ---- identity sampled from Slack's picker swatches; per-mode shades derived ----
     ident('lagoon', 'Lagoon', '#006EA2'),

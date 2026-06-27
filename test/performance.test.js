@@ -96,7 +96,7 @@ test('per-topic scan is cached so re-renders cost nothing', () => {
 
 test('per-topic scan splits reads from writes (no interleaved recalc)', () => {
   // the read loop pushes into arrays; writes happen after — assert buffers exist before the loop
-  assert.match(taggerSrc, /const bubbles = \[\], codes = \[\], dates = \[\]/);
+  assert.match(taggerSrc, /const bubbles = \[\], dates = \[\], wides = \[\]/);
 });
 
 // ---------- source guardrails: controls.js (in-page meetings toggle) ----------
