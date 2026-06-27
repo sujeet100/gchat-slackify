@@ -205,12 +205,18 @@
 
   // ---- per-topic scan (bubbles + codes + in-topic dates): once per topic, read then write ----
   const processedTopics = new WeakSet();
+  // An element we tagged in each topic. If it later disconnects, Wiz RE-RENDERED the topic (e.g. a
+  // just-sent message that was optimistically rendered, then replaced on server-confirm) and dropped
+  // our tags — so we re-scan instead of trusting processedTopics. This is what makes a newly-sent
+  // message settle into the Slack layout immediately, without needing a conversation switch.
+  const topicAnchor = new WeakMap();
   function scanTopic(topic) {
-    if (processedTopics.has(topic)) return;
+    const anchor = topicAnchor.get(topic);
+    if (processedTopics.has(topic) && anchor && anchor.isConnected) return;   // done & not re-rendered
     const nodes = topic.querySelectorAll('div, span');
     if (!nodes.length) { topicIO.observe(topic); return; }   // skeleton not filled yet → retry later
     processedTopics.add(topic);
-    const bubbles = [], dates = [], wides = [];
+    const bubbles = [], dates = [], wides = [], selfRows = [];
     for (const el of nodes) {                                 // READ phase
       if (el.hasAttribute('data-slackify')) continue;
       if (el.children.length === 0) {
@@ -227,8 +233,22 @@
       if (r < 4) continue;
       if (!(el.textContent || '').trim()) continue;
       const bg = rgb(cs.backgroundColor);
+      const grey = isGrey(bg);
+      const colored = r >= 12 && bg && bg.a > 0.4 && !isWhite(bg) && !grey;   // a self (non-grey) bubble
       // catch grey (other-person) bubbles AND colored (self) bubbles; skip white/transparent
-      if (isGrey(bg) || (r >= 12 && bg && bg.a > 0.4 && !isWhite(bg))) bubbles.push(el);
+      if (grey || colored) bubbles.push(el);
+      // YOUR OWN message: a colored, right-aligned DIV bubble (grey = the other person; a SPAN with a
+      // rounded coloured bg is an icon chip — e.g. a Material symbol — not a message, so require DIV).
+      // Walk up to the HIGHEST flex-end ancestor — the per-message column GChat right-aligns — and tag
+      // it so CSS can flip it into the left column and drop the self avatar into the gutter.
+      if (colored && el.tagName === 'DIV') {
+        let row = null;
+        for (let n = el, i = 0; n && n !== topic && i < 10; n = n.parentElement, i++) {
+          const a = getComputedStyle(n);
+          if (a.alignSelf === 'flex-end' || a.alignItems === 'flex-end' || a.justifyContent === 'flex-end') row = n;
+        }
+        if (row) selfRows.push(row);
+      }
     }
     // Detect circular avatar wrapper divs (border-radius ≥ 12 on img parent = clipping circle).
     // Tagging the wrapper lets CSS square it without :has() in the stylesheet. For each avatar, also
@@ -238,6 +258,9 @@
     for (const img of topic.querySelectorAll('img')) {
       const p = img.parentElement;
       if (!p || p.hasAttribute('data-slackify')) continue;
+      // Skip tiny avatars (e.g. the ~14px "seen by" read-receipt thumbnail): tagging its round clip
+      // would let msgalign/avatarshape blow it up to a 36px square. Only real message avatars qualify.
+      if (img.getBoundingClientRect().width < 24) continue;
       const r = parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0;
       if (r >= 12) {
         avatarWraps.push(p);
@@ -251,9 +274,18 @@
     }
     for (const el of dates) tagDate(el);                      // WRITE phase
     for (const el of bubbles) el.setAttribute('data-slackify', 'bubble');
+    // Keep only the OUTERMOST self-row per message: a colored sub-element (e.g. a reaction pill) can
+    // resolve to a different, NESTED flex-end ancestor, which would otherwise draw a 2nd gutter avatar.
+    for (const el of selfRows) {
+      if (el.hasAttribute('data-slackify')) continue;
+      if (selfRows.some((o) => o !== el && o.contains(el))) continue;
+      el.setAttribute('data-slackify', 'self-row');
+    }
     for (const el of wides) el.setAttribute('data-slackify-wide', '');   // separate attr (orthogonal to bubble)
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
     for (const el of msgRows) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'msgrow');
+    // Remember a stable element so a future pass can detect a Wiz re-render (see topicAnchor above).
+    topicAnchor.set(topic, selfRows[0] || bubbles[0] || topic.firstElementChild);
   }
 
   // ---- avatar wrappers OUTSIDE the message stream (rail + Home feed) ----
@@ -328,12 +360,42 @@
     }
   }
 
+  // Re-queue the most recent topics whenever the tree changed, so a re-rendered or just-sent message
+  // (whose tags Wiz dropped on its server-confirm re-render) gets re-scanned. scanTopic early-returns
+  // in O(1) when a topic is unchanged (anchor still connected), so this is cheap on quiet mutations.
+  function requeueRecentTopics(pane) {
+    const ts = pane.querySelectorAll(TOPIC_SEL);
+    for (let i = Math.max(0, ts.length - 4); i < ts.length; i++) topicQueue.add(ts[i]);
+  }
+
+  // ---- self identity: read the signed-in user's own avatar URL + name ONCE into CSS vars ----
+  // The "Slack-style own messages" feature paints them (avatar gutter + bold name header) via
+  // pseudo-elements, so we never inject a node into Wiz's message stream. Cached (runs until found,
+  // then never again); no getComputedStyle — just a querySelector + property writes. The image is
+  // already loaded by Chat (the account button), so referencing it is a cache hit, not a fresh fetch.
+  let selfAvatarSet = false;
+  function ensureSelfAvatar() {
+    if (selfAvatarSet) return;
+    const img = C.firstMatchEl('selfAvatar');
+    const src = img && (img.currentSrc || img.src);
+    if (!src) return;
+    document.documentElement.style.setProperty('--sf-self-avatar', `url("${src}")`);
+    // Name from the account button's aria-label ("Google Account: Jane Doe \n(jane@x.com)"): drop the
+    // localized "…:" prefix and the "(email)", collapse whitespace. JSON.stringify quotes it for CSS
+    // content. If we can't derive a name, the CSS var stays unset and content falls back to "You".
+    const label = (img.closest('[aria-label]') || {}).getAttribute ? img.closest('[aria-label]').getAttribute('aria-label') : '';
+    const name = (label || '').replace(/^[^:]*:\s*/, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+    if (name) document.documentElement.style.setProperty('--sf-self-name', JSON.stringify(name));
+    selfAvatarSet = true;
+  }
+
   // ---- the pass: cheap region work when the tree changed, then chunked visible-topic scans ----
   let dirty = true;
   function pass(deadline) {
     if (dirty) {
       dirty = false;
       try { tagRail(); } catch (e) {}
+      try { ensureSelfAvatar(); } catch (e) {}
       try { tagStatusChip(); } catch (e) {}
       try { tagComposer(); } catch (e) {}
       const pane = C.firstMatchEl('conversationPane');
@@ -343,7 +405,7 @@
       try { scanAvatars(rail); } catch (e) {}
       try { scanSpaceNames(rail); } catch (e) {}
       try { if (pane) tagStream(pane); } catch (e) {}
-      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} }
+      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
     }
     const hasTime = () => !deadline || typeof deadline.timeRemaining !== 'function' || deadline.timeRemaining() > 3;
     for (const t of topicQueue) {

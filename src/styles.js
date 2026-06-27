@@ -225,6 +225,38 @@
     parts.push(mk('msgalign', inMain(TAG.avatarWrap), '', { width: '36px', height: '36px', 'min-width': '36px' }));
     parts.push(mk('msgalign', inMain(`${TAG.avatarWrap} img`), '', { width: '36px', height: '36px' }));
 
+    // ===== SLACK-STYLE OWN MESSAGES (left-align your messages + show your avatar) =====
+    // GChat right-aligns your own messages via nested flex-end; tagger.js tags the per-message column
+    // it right-aligns as [data-slackify="self-row"]. Flip that column to the left and pull the bubble
+    // content back to the start, then drop your avatar (read into --sf-self-avatar) into the gutter via
+    // an absolutely-positioned ::before — so NO node is injected into Wiz's message stream. The blue
+    // bubble itself is removed by the separate 'flatten' feature (the bubble is also tagged 'bubble').
+    const selfRow = inMain(TAG.selfRow);
+    // Left-align the column AND set justify-start, so it works whether the tagged row is a flex column
+    // (right-aligned via align-items) or a flex row (via justify-content). 44px = 36px avatar + 8 gap;
+    // 20px top reserves a line for the synthetic name header (GChat shows no visible self-name).
+    parts.push(mk('selfslack', selfRow, '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'position': 'relative', 'padding-left': '44px', 'padding-top': '20px', 'box-sizing': 'border-box' }));
+    // Undo the nested right-push on descendants so the content sits at the left. The inner flex-end
+    // levels are content-width no-ops today, but resetting them future-proofs deeper/altered trees.
+    parts.push(mk('selfslack', selfRow, ' *', { 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
+    // The avatar tile in the gutter — squared (Slack style, matches 'avatarshape'); a neutral
+    // placeholder shows until tagger.js sets --sf-self-avatar from the account button.
+    parts.push(mk('selfslack', selfRow, '::before', {
+      'content': '""', 'position': 'absolute', 'left': '0', 'top': '0',
+      'width': '36px', 'height': '36px', 'border-radius': '3px',
+      'background-image': 'var(--sf-self-avatar, none)', 'background-color': 'var(--sf-msg-hover)',
+      'background-size': 'cover', 'background-position': 'center', 'background-repeat': 'no-repeat',
+    }));
+    // The bold sender-name header (Slack shows your full name on your own messages). tagger.js puts
+    // your name in --sf-self-name; if it can't be derived, content falls back to "You" (GChat's own
+    // term for yourself — it labels your messages "You" in spaces).
+    parts.push(mk('selfslack', selfRow, '::after', {
+      'content': 'var(--sf-self-name, "You")',
+      'position': 'absolute', 'left': '44px', 'top': '0',
+      'font-weight': '700', 'font-size': '15px', 'line-height': '18px',
+      'color': 'var(--sf-content-text)',
+    }));
+
     // ===== THREAD REPLIES (Slack-style "N replies" link chip) =====
     // tagger.js tags the clickable reply affordance [data-slackify="thread-chip"] and the count
     // span [data-slackify="reply-count"]. GChat shows no participant avatars in this affordance, so

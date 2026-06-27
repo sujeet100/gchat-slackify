@@ -73,6 +73,13 @@
     newChat:            ['[data-slackify="rail"] [data-is-fab]'],
     // Chat logo lockup <img> in the top bar (durable: src always contains "chatlogo", locale-indep).
     chatLogo:           ['[role="banner"] img[src*="chatlogo"]'],
+    // The signed-in user's own avatar (the account button, top-right of the banner). tagger.js reads
+    // its src ONCE into the --sf-self-avatar CSS var so the "Slack-style own messages" feature can
+    // paint it in the gutter via a ::before (no node injected into Wiz's message stream). The
+    // aria-label primary is precise but localized; the googleusercontent src is the locale-indep
+    // fallback (the chat logo is gstatic, the workspace logo is google.com/…/logo.gif — neither match).
+    selfAvatar:         ['[role="banner"] [aria-label^="Google Account"] img',
+                         '[role="banner"] img[src*="googleusercontent.com"]'],
     // message-area containers — used to suppress GChat's own grey hover/active fills
     mainRow:          ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'],
     messageContainer: ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'],
@@ -107,6 +114,10 @@
     spaceHeader: '[data-slackify="space-header"]',
     threadChip:  '[data-slackify="thread-chip"]',
     replyCount:  '[data-slackify="reply-count"]',
+    // The per-message column GChat right-aligns for YOUR own messages (highest flex-end ancestor of
+    // a colored self-bubble). tagger.js tags it so the "Slack-style own messages" feature can flip
+    // it to the left column and drop your avatar into the gutter.
+    selfRow:     '[data-slackify="self-row"]',
   };
 
   // Independently toggleable features. attr = html[data-sf-feat-<id>].
@@ -130,6 +141,7 @@
     { id: 'codestyle',    label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },
     { id: 'mentionpills', label: 'Mention pills',           default: true,  desc: 'Show @mentions as Slack-style rounded chips with a tinted background' },
     { id: 'composer',     label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
+    { id: 'selfslack',    label: 'Slack-style own messages', default: true, desc: 'Show your own messages left-aligned in the main column with your avatar, like Slack (instead of right-aligned bubbles). Pairs with “Flat messages” to drop the blue bubble.' },
     { id: 'unreadswitch', label: 'Visible “Unread” switch',  default: true,  desc: 'Give the Home “Unread” filter a clear themed color when it is ON (GChat’s default ON state is nearly invisible)' },
     { id: 'hidemeetings', label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
     { id: 'dimmeetings',  label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },

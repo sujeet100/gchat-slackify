@@ -36,6 +36,7 @@
     codeInline: '[role="main"] code', // inline code <code>; present only in conversations with code
     codeBlock: '[role="main"] pre', // code blocks <pre>; present only in conversations with code blocks
     threadReply: '[role="main"] [data-last-reply-time-msec]', // thread reply rows; present only in spaces with threads
+    selfAvatar: '[role="banner"] img[src*="googleusercontent.com"]', // the signed-in user's own avatar (account button) — source for the Slack-style self-message avatar/name
   };
 
   const count = (sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return 'INVALID:' + e.message; } };
