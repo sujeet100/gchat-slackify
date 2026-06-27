@@ -43,24 +43,32 @@
   // Explicit (sampled) theme with both modes hand-specified.
   const ex = (id, label, isDark, light, dark) => ({ id, label, isDark, modes: { light, dark } });
 
-  // Theme derived from a single sampled identity (swatch) color.
-  //   light: saturated identity rail (active darkened if the hue is pale, else lightened)
-  //   dark:  very dark tint of the hue, brighter accent for the active item
+  // Theme derived from a single sampled identity (swatch) color, matching the real Slack client:
+  //   light: PALE tint sidebar (Slack's light "channel list"), dark text, the saturated identity
+  //          reserved for the active item so the selected conversation pops.
+  //   dark:  very dark tint of the hue, brighter accent for the active item.
   const ident = (id, label, identity, o) => {
     o = o || {};
     const isLight = lum(identity) > 140;
-    const light = pal(identity, isLight ? mixB(identity, 0.16) : mixW(identity, 0.20), ink(identity), null, o.presence, o.mention);
+    const light = pal(
+      mixW(identity, 0.90),                                  // pale tinted sidebar
+      isLight ? mixB(identity, 0.20) : identity,             // active = vivid identity (dark hue) / darkened (pale hue)
+      '#1D1C1D',                                             // dark text on the pale sidebar
+      null, o.presence, o.mention
+    );
     const dark = pal(o.darkBg || mixB(identity, 0.80), mixW(identity, 0.18), '#D1D2D3', null, o.presence, o.mention);
     return { id, label, isDark: !isLight, modes: { light, dark } };
   };
 
   const THEMES = [
     // ---- sampled from the live Slack client (light + dark), 2026-06-27 ----
+    // light = pale tint sidebar + dark text + vivid active (sampled Slack light channel list);
+    // dark  = very dark tint of the hue + brighter active.
     ex('aubergine', 'Aubergine', true,
-      pal('#611F69', '#7A3382', '#FFFFFF'),
+      pal('#F0E9F0', '#611F69', '#1D1C1D', '#FFFFFF'),
       pal('#241229', '#7D3986', '#D1D2D3')),
     ex('jade', 'Jade', true,
-      pal('#178F65', '#0E674D', '#FFFFFF'),
+      pal('#E8F4F0', '#178F65', '#1D1C1D', '#FFFFFF'),
       pal('#0D241E', '#106F4D', '#D1D2D3')),
     // ---- identity sampled from Slack's picker swatches; per-mode shades derived ----
     ident('lagoon', 'Lagoon', '#006EA2'),
@@ -88,6 +96,7 @@
       mentionPillBg: '#E8F2FC', mentionPillText: '#1264A3',
       codeText: '#E01E5A',   // Slack inline-code crimson (light)
       statusChipText: '#1D1C1D',   // dark text on the (light) status pill in light mode
+      selfBg: 'rgba(29,28,29,0.04)',   // subtle highlight band for your own messages (light)
     },
     dark: {
       contentText: '#D1D2D3', msgHover: 'rgba(255,255,255,0.06)',
@@ -97,6 +106,7 @@
       mentionPillBg: 'rgba(120,170,255,0.16)', mentionPillText: '#A8C7FA',
       codeText: '#E8912D',   // Slack inline-code orange (dark)
       statusChipText: '#E3E3E3',   // light text on the (dark) status pill in dark mode
+      selfBg: 'rgba(255,255,255,0.04)',   // subtle highlight band for your own messages (dark)
     },
   };
 

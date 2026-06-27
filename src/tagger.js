@@ -117,6 +117,22 @@
     }
   }
 
+  // ---- compose box: the rounded composer container (border-radius >= 16) wrapping [role=textbox].
+  //      Tagged once (cheap re-check); getComputedStyle only runs while it's missing. ----
+  function tagComposer() {
+    const ex = document.querySelector('[data-slackify="composer"]');
+    if (ex && ex.isConnected) return;
+    if (ex) ex.removeAttribute('data-slackify');
+    const tb = document.querySelector('[role="main"] [role="textbox"]');
+    if (!tb) return;
+    let el = tb;
+    for (let i = 0; i < 6 && el; i++) {
+      const r = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+      if (r >= 16) { el.setAttribute('data-slackify', 'composer'); return; }
+      el = el.parentElement;
+    }
+  }
+
   // ---- per-topic scan (bubbles + codes + in-topic dates): once per topic, read then write ----
   const processedTopics = new WeakSet();
   function scanTopic(topic) {
@@ -124,7 +140,9 @@
     const nodes = topic.querySelectorAll('div, span');
     if (!nodes.length) { topicIO.observe(topic); return; }   // skeleton not filled yet → retry later
     processedTopics.add(topic);
-    const bubbles = [], codes = [], dates = [];
+    const bubbles = [], codes = [], dates = [], selfAligns = [];
+    let selfWide = false;   // confirms a real self message (a block-level right-aligner, not a sub-bit)
+    const topicW = topic.getBoundingClientRect().width;
     for (const el of nodes) {                                 // READ phase
       if (el.hasAttribute('data-slackify')) continue;
       if (el.children.length === 0) {
@@ -132,6 +150,17 @@
         if (t && t.length <= 40 && isDate(t)) { dates.push(el); continue; }
       }
       const cs = getComputedStyle(el);
+      // GChat right-aligns the current user's OWN messages via a COMBINATION of nested flex tricks:
+      // column align-items:flex-end, row justify-content:flex-end, and align-self:flex-end. Collect
+      // every right-aligner so we can flip them all to the left. Only treat the topic as "self" when
+      // a WIDE block-level aligner confirms it (avoids false positives from small end-aligned bits).
+      const flex = cs.display.indexOf('flex') !== -1;
+      const blockAlign = (flex && cs.flexDirection === 'column' && cs.alignItems === 'flex-end')
+                      || (flex && cs.flexDirection !== 'column' && cs.justifyContent === 'flex-end');
+      if (blockAlign || cs.alignSelf === 'flex-end') {
+        selfAligns.push(el);
+        if (blockAlign && topicW && el.getBoundingClientRect().width > topicW * 0.5) selfWide = true;
+      }
       // Monospace = code block/inline code — tag for codestyle feature, skip bubble detection.
       if (/mono/i.test(cs.fontFamily || '')) {
         if ((el.textContent || '').trim()) codes.push(el);
@@ -157,6 +186,8 @@
     for (const el of bubbles) el.setAttribute('data-slackify', 'bubble');
     for (const el of codes) el.setAttribute('data-slackify', 'code');
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
+    // self message: tag every right-aligner (so CSS flips them all left) + the topic (highlight)
+    if (selfWide) { for (const el of selfAligns) el.setAttribute('data-slackify', 'self-align'); topic.setAttribute('data-slackify', 'self'); }
   }
 
   // ---- avatar wrappers OUTSIDE the message stream (rail + Home feed) ----
@@ -208,6 +239,7 @@
       dirty = false;
       try { tagRail(); } catch (e) {}
       try { tagStatusChip(); } catch (e) {}
+      try { tagComposer(); } catch (e) {}
       const pane = C.firstMatchEl('conversationPane');
       const rail = document.querySelector('[data-slackify="rail"]');
       try { tagActiveRow(pane, rail); } catch (e) {}

@@ -56,7 +56,7 @@
         `--sf-date-line:${m.dateLine};--sf-code-bg:${m.codeBg};--sf-code-border:${m.codeBorder};` +
         `--sf-search-drop-bg:${m.searchDropBg};--sf-search-drop-text:${m.searchDropText};` +
         `--sf-mention-pill-bg:${m.mentionPillBg};--sf-mention-pill-text:${m.mentionPillText};` +
-        `--sf-code-text:${m.codeText};--sf-status-chip-text:${m.statusChipText};}`
+        `--sf-code-text:${m.codeText};--sf-status-chip-text:${m.statusChipText};--sf-self-bg:${m.selfBg};}`
       );
     }
 
@@ -114,10 +114,25 @@
     // Suppress Google's own per-element hover highlight within messages (creates a weird inner glow).
     // Scoped to [role="main"] so it doesn't affect the sidebar.
     parts.push(mk('flatten', ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'], ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
-    parts.push(mk('density', SEL.messageTopic, '', { 'padding-top': '1px', 'padding-bottom': '1px', 'gap': '0' }));
+    // padding-bottom gives the gap to the next message. Reactions are the last thing in a topic, so
+    // a few px here stops messages-with-reactions from crowding the next one — still compact.
+    parts.push(mk('density', SEL.messageTopic, '', { 'padding-top': '1px', 'padding-bottom': '5px', 'gap': '0' }));
     parts.push(mk('fullwidth', [TAG.stream], '', { 'max-width': 'none', 'margin-left': '0', 'margin-right': '0', width: 'auto', 'align-self': 'stretch' }));
     parts.push(mk('fullwidth', SEL.messageTopic, '', { 'padding-left': '16px', 'padding-right': '16px', 'align-self': 'flex-start', 'margin-left': '0', 'margin-right': '0', width: '100%', 'box-sizing': 'border-box' }));
     parts.push(mk('rowhover', SEL.messageTopic, ':hover', { 'background-color': 'var(--sf-msg-hover)' }));
+    // Kill GChat's grey hover/active fill on the message containers (incl. when the reaction/action
+    // toolbar appears) so only our subtle Slack-style row hover shows. Scoped to [role=main].
+    parts.push(mk('rowhover', ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'], ':hover', { 'background-color': 'transparent' }));
+
+    // ===== SELF MESSAGES (left-align your own + subtle highlight, instead of GChat's right-align) =====
+    // tagger.js tags the right-aligning container [data-slackify="self-align"] and the topic
+    // [data-slackify="self"]. Flip the aligner to flex-start; give the topic a faint highlight band.
+    parts.push(mk('selfmessages', ['[data-slackify="self-align"]'], '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
+    parts.push(mk('selfmessages', ['[data-slackify="self"]'], '', { 'background-color': 'var(--sf-self-bg)', 'border-radius': '4px' }));
+
+    // ===== COMPOSER (flatten the rounded pill into a Slack-style bordered box) =====
+    // tagger.js tags the rounded composer container [data-slackify="composer"].
+    parts.push(mk('composer', ['[data-slackify="composer"]'], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)', 'background-color': 'transparent' }));
 
     // ===== DATE DIVIDERS (Slack pill on a divider line) =====
     parts.push(mk('datedividers', ['[data-slackify="datewrap"]'], '', { position: 'relative', 'text-align': 'center' }));

@@ -6,6 +6,25 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-06-27
+
+### Added
+- **Left-align your own messages** (`selfmessages`) — flips Google Chat's right-aligned self
+  messages to the left (like Slack) with a subtle highlight band, so your messages are easy to spot
+  despite having no avatar. The tagger detects the right-aligning flex containers (column
+  `align-items:flex-end` / row `justify-content:flex-end` / `align-self:flex-end`) and flips them.
+- **Slack-style compose box** (`composer`) — flattens the rounded pill composer into a bordered box.
+
+### Changed
+- **Light-mode sidebar now uses a pale tint** (e.g. aubergine `#F0E9F0`, jade `#E8F4F0`) with dark
+  text and the vivid brand color reserved for the active item — matching the real Slack light theme
+  (previously it used the saturated color as the whole sidebar).
+- Reactions no longer crowd the next message under compact density (topic bottom padding).
+
+### Fixed
+- Suppress Google Chat's grey message-hover fill (incl. when the reaction toolbar appears) so only
+  the subtle Slack-style row hover shows.
+
 ## [0.9.0] — 2026-06-27
 
 ### Added
