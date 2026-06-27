@@ -6,6 +6,17 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-06-27
+
+### Changed
+- **Removed the experimental left-align self-messages feature** — kept Google Chat's native
+  right-aligned blue self-bubbles (per user decision; left-align looked orphaned without an avatar).
+
+### Fixed
+- **Compose box** now actually renders as a Slack-style bordered box: the tagger tags the first
+  opaque, wide composer ancestor (the white box wrapping input + toolbar) instead of the transparent
+  inner layer it was tagging before.
+
 ## [0.11.0] — 2026-06-27
 
 ### Fixed

@@ -125,10 +125,15 @@
     if (ex) ex.removeAttribute('data-slackify');
     const tb = document.querySelector('[role="main"] [role="textbox"]');
     if (!tb) return;
+    // The composer's visible background lives on the first OPAQUE, wide-enough ancestor of the
+    // textbox (the white box wrapping the input + toolbar) — the inner layers are transparent.
+    // Box THAT to get a Slack-style bordered composer.
     let el = tb;
-    for (let i = 0; i < 6 && el; i++) {
-      const r = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-      if (r >= 16) { el.setAttribute('data-slackify', 'composer'); return; }
+    for (let i = 0; i < 10 && el; i++) {
+      const cs = getComputedStyle(el);
+      const m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      const opaque = m && (m[4] === undefined || +m[4] > 0.5);
+      if (opaque && el.getBoundingClientRect().width > 300) { el.setAttribute('data-slackify', 'composer'); return; }
       el = el.parentElement;
     }
   }
@@ -140,9 +145,7 @@
     const nodes = topic.querySelectorAll('div, span');
     if (!nodes.length) { topicIO.observe(topic); return; }   // skeleton not filled yet → retry later
     processedTopics.add(topic);
-    const bubbles = [], codes = [], dates = [], selfAligns = [];
-    let selfWide = false;   // confirms a real self message (a block-level right-aligner, not a sub-bit)
-    const topicW = topic.getBoundingClientRect().width;
+    const bubbles = [], codes = [], dates = [];
     for (const el of nodes) {                                 // READ phase
       if (el.hasAttribute('data-slackify')) continue;
       if (el.children.length === 0) {
@@ -150,17 +153,6 @@
         if (t && t.length <= 40 && isDate(t)) { dates.push(el); continue; }
       }
       const cs = getComputedStyle(el);
-      // GChat right-aligns the current user's OWN messages via a COMBINATION of nested flex tricks:
-      // column align-items:flex-end, row justify-content:flex-end, and align-self:flex-end. Collect
-      // every right-aligner so we can flip them all to the left. Only treat the topic as "self" when
-      // a WIDE block-level aligner confirms it (avoids false positives from small end-aligned bits).
-      const flex = cs.display.indexOf('flex') !== -1;
-      const blockAlign = (flex && cs.flexDirection === 'column' && cs.alignItems === 'flex-end')
-                      || (flex && cs.flexDirection !== 'column' && cs.justifyContent === 'flex-end');
-      if (blockAlign || cs.alignSelf === 'flex-end') {
-        selfAligns.push(el);
-        if (blockAlign && topicW && el.getBoundingClientRect().width > topicW * 0.5) selfWide = true;
-      }
       // Monospace = code block/inline code — tag for codestyle feature, skip bubble detection.
       if (/mono/i.test(cs.fontFamily || '')) {
         if ((el.textContent || '').trim()) codes.push(el);
@@ -186,8 +178,6 @@
     for (const el of bubbles) el.setAttribute('data-slackify', 'bubble');
     for (const el of codes) el.setAttribute('data-slackify', 'code');
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
-    // self message: tag every right-aligner (so CSS flips them all left) + the topic (highlight)
-    if (selfWide) { for (const el of selfAligns) el.setAttribute('data-slackify', 'self-align'); topic.setAttribute('data-slackify', 'self'); }
   }
 
   // ---- avatar wrappers OUTSIDE the message stream (rail + Home feed) ----

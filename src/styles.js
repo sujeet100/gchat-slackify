@@ -56,7 +56,7 @@
         `--sf-date-line:${m.dateLine};--sf-code-bg:${m.codeBg};--sf-code-border:${m.codeBorder};` +
         `--sf-search-drop-bg:${m.searchDropBg};--sf-search-drop-text:${m.searchDropText};` +
         `--sf-mention-pill-bg:${m.mentionPillBg};--sf-mention-pill-text:${m.mentionPillText};` +
-        `--sf-code-text:${m.codeText};--sf-status-chip-text:${m.statusChipText};--sf-self-bg:${m.selfBg};}`
+        `--sf-code-text:${m.codeText};--sf-status-chip-text:${m.statusChipText};}`
       );
     }
 
@@ -129,15 +129,9 @@
     // toolbar appears) so only our subtle Slack-style row hover shows. Scoped to [role=main].
     parts.push(mk('rowhover', ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'], ':hover', { 'background-color': 'transparent' }));
 
-    // ===== SELF MESSAGES (left-align your own + subtle highlight, instead of GChat's right-align) =====
-    // tagger.js tags the right-aligning container [data-slackify="self-align"] and the topic
-    // [data-slackify="self"]. Flip the aligner to flex-start; give the topic a faint highlight band.
-    parts.push(mk('selfmessages', ['[data-slackify="self-align"]'], '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
-    parts.push(mk('selfmessages', ['[data-slackify="self"]'], '', { 'background-color': 'var(--sf-self-bg)', 'border-radius': '4px' }));
-
     // ===== COMPOSER (flatten the rounded pill into a Slack-style bordered box) =====
     // tagger.js tags the rounded composer container [data-slackify="composer"].
-    parts.push(mk('composer', ['[data-slackify="composer"]'], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)', 'background-color': 'transparent' }));
+    parts.push(mk('composer', ['[data-slackify="composer"]'], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)' }));
 
     // ===== DATE DIVIDERS (Slack pill on a divider line) =====
     parts.push(mk('datedividers', ['[data-slackify="datewrap"]'], '', { position: 'relative', 'text-align': 'center' }));
