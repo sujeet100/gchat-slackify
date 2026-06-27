@@ -99,6 +99,12 @@
     parts.push(mk('topbar', SEL.search, ' *:not(img)', { color: 'var(--sf-top-text)' }));
     // Search input placeholder — color doesn't inherit automatically in Chrome.
     parts.push(mk('topbar', SEL.searchInput, '::placeholder', { color: 'rgba(255,255,255,0.65)', opacity: '1' }));
+    // When the search is FOCUSED (its dropdown is open), revert it to a native LIGHT card so the
+    // results read natively instead of a purple input band sitting over white rows. :focus-within is
+    // cheap + safe (NOT :has). Collapsed (unfocused) stays translucent on the dark bar.
+    parts.push(mk('topbar', SEL.search, ':focus-within', { 'background-color': 'var(--sf-search-drop-bg)' }));
+    parts.push(mk('topbar', SEL.search, ':focus-within *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', SEL.search, ':focus-within ::placeholder', { color: 'rgba(128,128,128,0.9)', opacity: '1' }));
     // Search dropdown: use mode-aware background/text so light mode = white, dark mode = dark.
     parts.push(mk('topbar', SEL.searchDropdown, '', { 'background-color': 'var(--sf-search-drop-bg)', color: 'var(--sf-search-drop-text)', 'border-radius': '4px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.2)' }));
     parts.push(mk('topbar', SEL.searchDropdownItem, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
