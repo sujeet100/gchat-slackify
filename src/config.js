@@ -63,10 +63,16 @@
     // and locale-independent, present on every thread-with-replies row → a durable hook. tagger.js
     // tags the clickable button + the count span so CSS can render a Slack-style link chip.
     threadReply:      ['[role="main"] [data-last-reply-time-msec]'],
-    // top-search dropdown (autocomplete results shown when the search is focused)
+    // top-search input + its autocomplete dropdown. The dropdown renders inside [role="banner"] but
+    // OUTSIDE [role="search"] (verified live), so it's scoped to the banner — otherwise our search
+    // re-ink rule misses it and the banner white-text rule leaves white-on-white result rows.
     searchInput:        ['[role="search"] input', '[role="search"] [contenteditable]'],
-    searchDropdown:     ['[role="search"] [role="listbox"]'],
-    searchDropdownItem: ['[role="search"] [role="option"]', '[role="search"] li', '[role="search"] [role="listbox"]'],
+    searchDropdown:     ['[role="banner"] [role="listbox"]'],
+    // GChat's "New chat" FAB. data-is-fab is Google-owned + locale-independent → durable. Our rail
+    // makes descendant backgrounds transparent, which hides the FAB on the dark rail; we re-surface it.
+    newChat:            ['[data-slackify="rail"] [data-is-fab]'],
+    // Chat logo lockup <img> in the top bar (durable: src always contains "chatlogo", locale-indep).
+    chatLogo:           ['[role="banner"] img[src*="chatlogo"]'],
     // message-area containers — used to suppress GChat's own grey hover/active fills
     mainRow:          ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'],
     messageContainer: ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'],

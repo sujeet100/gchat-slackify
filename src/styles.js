@@ -90,24 +90,30 @@
     // old :is() list missed), then add Slack's subtle theme-tinted hover on the row itself.
     parts.push(mk('sidebar', [TAG.rail], ' *:hover', { 'background-color': 'transparent' }));
     parts.push(mk('sidebar', [TAG.rail], ' [role="listitem"]:hover', { 'background-color': 'var(--sf-side-hover-overlay)' }));
+    // "New chat" FAB: the rail makes descendant backgrounds transparent, so on the dark rail the FAB
+    // merges into the background. Give it a distinct surface + outline (mode-reactive) so it stands out.
+    parts.push(mk('sidebar', SEL.newChat, '', { 'background-color': 'var(--sf-side-hover-overlay)', 'border': '1px solid var(--sf-side-text)' }));
 
     // ===== TOP BAR =====
     parts.push(mk('topbar', SEL.topBar, '', { 'background-color': 'var(--sf-top-bg)' }));
     parts.push(mk('topbar', SEL.topBar, ' *:not(img):not(image)', { color: 'var(--sf-top-text)' }));
     parts.push(mk('topbar', SEL.topBar, ' svg', { fill: 'var(--sf-top-text)' }));
-    parts.push(mk('topbar', SEL.search, '', { 'background-color': 'rgba(127,127,127,0.18)', 'border-radius': '6px' }));
-    parts.push(mk('topbar', SEL.search, ' *:not(img)', { color: 'var(--sf-top-text)' }));
-    // Search input placeholder — color doesn't inherit automatically in Chrome.
-    parts.push(mk('topbar', SEL.searchInput, '::placeholder', { color: 'rgba(255,255,255,0.65)', opacity: '1' }));
-    // When the search is FOCUSED (its dropdown is open), revert it to a native LIGHT card so the
-    // results read natively instead of a purple input band sitting over white rows. :focus-within is
-    // cheap + safe (NOT :has). Collapsed (unfocused) stays translucent on the dark bar.
-    parts.push(mk('topbar', SEL.search, ':focus-within', { 'background-color': 'var(--sf-search-drop-bg)' }));
-    parts.push(mk('topbar', SEL.search, ':focus-within *:not(img)', { color: 'var(--sf-search-drop-text)' }));
-    parts.push(mk('topbar', SEL.search, ':focus-within ::placeholder', { color: 'rgba(128,128,128,0.9)', opacity: '1' }));
-    // Search dropdown: use mode-aware background/text so light mode = white, dark mode = dark.
-    parts.push(mk('topbar', SEL.searchDropdown, '', { 'background-color': 'var(--sf-search-drop-bg)', color: 'var(--sf-search-drop-text)', 'border-radius': '4px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.2)' }));
-    parts.push(mk('topbar', SEL.searchDropdownItem, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    // Search: keep it ORIGINAL/native — we do NOT style the search box or its dropdown. We ONLY undo
+    // the [role="banner"] white text/icon rules above (otherwise GChat's native dark search text +
+    // dropdown rows would be whitened to white-on-white on their light native surface). The dropdown
+    // is a descendant of [role="search"], so this restores its native ink too. Mode-aware native ink.
+    parts.push(mk('topbar', SEL.search, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', SEL.search, ' svg', { fill: 'var(--sf-search-drop-text)' }));
+    // The search RESULTS dropdown renders in the banner but outside [role="search"], so the banner
+    // white-text rule whitens its rows (white-on-white). Restore native ink on it (keeps it native).
+    parts.push(mk('topbar', SEL.searchDropdown, '', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', SEL.searchDropdown, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', SEL.searchDropdown, ' svg', { fill: 'var(--sf-search-drop-text)' }));
+    // Chat logo: on our dark top bar, GChat's light-mode lockup (dark "Chat" wordmark) is unreadable.
+    // Swap it for GChat's OWN dark-theme lockup (a light wordmark) so it stays visible. This points an
+    // existing <img> at a sibling STATIC asset on Google's gstatic CDN (the same CDN the light lockup
+    // already loads from) — a passive image, not fetch/XHR/beacon/code, and carries no user data.
+    parts.push(mk('topbar', SEL.chatLogo, '', { content: 'url("https://ssl.gstatic.com/ui/v1/icons/mail/chatlogo/chat_2026_lockup_dark_2x.png")' }));
     // Status chip (Active/Busy pill): GChat gives it a light background that clashes on our dark top
     // bar. Give it the same translucent "dark-theme" treatment as the search box so it blends in —
     // its text is whitened by the [role="banner"] * rule above, and the colored presence dot (a
@@ -126,8 +132,12 @@
     // ===== MESSAGES: flatten / density / full-width / hover =====
     // flatten: remove ALL background/padding/margin from tagged bubbles so messages appear flat.
     // The :hover rule prevents Google Chat's own hover CSS from reinstating a background.
-    parts.push(mk('flatten', [TAG.bubble], '', { 'background-color': 'transparent', 'border-radius': '0', 'padding': '0', 'margin-top': '0' }));
-    parts.push(mk('flatten', [TAG.bubble], ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
+    // Some message cards (e.g. broadcast/announcement bubbles) set their grey background with a
+    // higher-specificity !important rule that a plain [data-slackify="bubble"] !important loses to.
+    // Out-specify it: scope under [role="main"] and double the attribute (a valid specificity hack).
+    const bubbleHi = SEL.conversationPane.map((p) => `${p} ${TAG.bubble}${TAG.bubble}`);
+    parts.push(mk('flatten', bubbleHi, '', { 'background-color': 'transparent', 'border-radius': '0', 'padding': '0', 'margin-top': '0' }));
+    parts.push(mk('flatten', bubbleHi, ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
     // Suppress Google's own per-element hover highlight within messages (creates a weird inner glow).
     // Scoped to [role="main"] so it doesn't affect the sidebar.
     parts.push(mk('flatten', SEL.mainRow, ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));

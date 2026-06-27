@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Slackify for Google Chat",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Make Google Chat look and feel like Slack — themes, Lato font, auto light/dark, toggles. Cosmetic only; no data leaves your browser.",
   "homepage_url": "https://github.com/REPLACE_ME/gchat-slackify",
   "permissions": ["storage"],
