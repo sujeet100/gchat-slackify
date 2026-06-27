@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="28" fill="#3F0E40"/>
+  <!-- speech bubble -->
+  <path d="M30 38a10 10 0 0 1 10-10h48a10 10 0 0 1 10 10v34a10 10 0 0 1-10 10H58L40 98V82h0a10 10 0 0 1-10-10V38z" fill="#fff" opacity="0.95"/>
+  <!-- hash, nodding to Slack channels -->
+  <g fill="#3F0E40">
+    <rect x="52" y="44" width="6" height="32" rx="2" transform="skewX(-8)"/>
+    <rect x="70" y="44" width="6" height="32" rx="2" transform="skewX(-8)"/>
+    <rect x="44" y="52" width="40" height="6" rx="3"/>
+    <rect x="42" y="62" width="40" height="6" rx="3"/>
+  </g>
+</svg>

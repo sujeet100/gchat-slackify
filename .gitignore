@@ -1,0 +1,12 @@
+# build / packaging
+*.zip
+*.crx
+*.pem
+dist/
+
+# os / editor
+.DS_Store
+*.log
+.idea/
+.vscode/
+node_modules/

@@ -1,0 +1,16 @@
+{
+  "name": "gchat-slackify",
+  "version": "0.2.0",
+  "description": "Make Google Chat look and feel like Slack. Cosmetic, lightweight, and private — no data leaves your browser.",
+  "homepage": "https://github.com/REPLACE_ME/gchat-slackify",
+  "license": "MIT",
+  "private": false,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/config.js && node --check src/themes.js && node --check src/styles.js && node --check src/apply.js && node --check src/tagger.js && node --check src/controls.js && node --check popup/popup.js"
+  },
+  "keywords": ["chrome-extension", "google-chat", "slack", "theme", "manifest-v3"],
+  "dependencies": {},
+  "devDependencies": {}
+}

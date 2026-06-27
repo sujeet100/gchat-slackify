@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+  <title>Slackify for Google Chat</title>
+</head>
+<body>
+  <header class="sf-head">
+    <div class="sf-title">
+      <span class="sf-logo">#</span>
+      <span>Slackify <small>for Google Chat</small></span>
+    </div>
+    <label class="sf-switch" title="Turn the whole skin on/off">
+      <input type="checkbox" id="sf-enabled">
+      <span class="sf-slider"></span>
+    </label>
+  </header>
+
+  <section class="sf-section">
+    <label class="sf-row" for="sf-theme">
+      <span class="sf-label">Theme</span>
+      <select id="sf-theme" class="sf-select"></select>
+    </label>
+    <p class="sf-hint">Light/dark follows your Google Chat theme automatically.</p>
+  </section>
+
+  <section class="sf-section">
+    <div class="sf-section-title">Features</div>
+    <div id="sf-features"></div>
+  </section>
+
+  <footer class="sf-foot">
+    <button type="button" id="sf-reset" class="sf-btn-ghost">Reset to defaults</button>
+    <a id="sf-repo" href="https://github.com/REPLACE_ME/gchat-slackify" target="_blank" rel="noopener">Source</a>
+  </footer>
+
+  <!-- config + themes set globals; popup.js builds the UI from them. No inline JS (MV3 CSP). -->
+  <script src="../src/config.js"></script>
+  <script src="../src/themes.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
