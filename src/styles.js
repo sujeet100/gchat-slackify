@@ -60,7 +60,7 @@
         `--sf-date-line:${m.dateLine};--sf-code-bg:${m.codeBg};--sf-code-border:${m.codeBorder};` +
         `--sf-search-drop-bg:${m.searchDropBg};--sf-search-drop-text:${m.searchDropText};` +
         `--sf-mention-pill-bg:${m.mentionPillBg};--sf-mention-pill-text:${m.mentionPillText};` +
-        `--sf-code-text:${m.codeText};--sf-status-chip-text:${m.statusChipText};}`
+        `--sf-code-text:${m.codeText};}`
       );
     }
 

@@ -203,6 +203,18 @@
     }
   }
 
+  // The highest ancestor (up to `topic`) that GChat right-aligns — i.e. carries a flex-end
+  // alignment. For YOUR OWN messages this is the per-message column; tagging it lets CSS flip the
+  // whole message into the left column. Returns null for a normally-aligned (other-person) element.
+  function highestRightAlignedAncestor(start, topic) {
+    let found = null;
+    for (let n = start, i = 0; n && n !== topic && i < 10; n = n.parentElement, i++) {
+      const cs = getComputedStyle(n);
+      if (cs.alignSelf === 'flex-end' || cs.alignItems === 'flex-end' || cs.justifyContent === 'flex-end') found = n;
+    }
+    return found;
+  }
+
   // ---- per-topic scan (bubbles + codes + in-topic dates): once per topic, read then write ----
   const processedTopics = new WeakSet();
   // An element we tagged in each topic. If it later disconnects, Wiz RE-RENDERED the topic (e.g. a
@@ -239,14 +251,9 @@
       if (grey || colored) bubbles.push(el);
       // YOUR OWN message: a colored, right-aligned DIV bubble (grey = the other person; a SPAN with a
       // rounded coloured bg is an icon chip — e.g. a Material symbol — not a message, so require DIV).
-      // Walk up to the HIGHEST flex-end ancestor — the per-message column GChat right-aligns — and tag
-      // it so CSS can flip it into the left column and drop the self avatar into the gutter.
+      // Tag the per-message column GChat right-aligns so CSS can flip it left + add the self avatar.
       if (colored && el.tagName === 'DIV') {
-        let row = null;
-        for (let n = el, i = 0; n && n !== topic && i < 10; n = n.parentElement, i++) {
-          const a = getComputedStyle(n);
-          if (a.alignSelf === 'flex-end' || a.alignItems === 'flex-end' || a.justifyContent === 'flex-end') row = n;
-        }
+        const row = highestRightAlignedAncestor(el, topic);
         if (row) selfRows.push(row);
       }
     }
