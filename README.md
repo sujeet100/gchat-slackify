@@ -4,7 +4,21 @@ A Chrome extension that makes **Google Chat** ([chat.google.com](https://chat.go
 
 > Cosmetic only. **No data ever leaves your browser.** No network calls, no remote code, no tracking. The only permission is `storage` (to save your settings). [See privacy →](PRIVACY.md)
 
-[![CI](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-v0.16.0-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![data exfiltration](https://img.shields.io/badge/data%20exfiltration-none-green)
+[![CI](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-v0.17.0-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![data exfiltration](https://img.shields.io/badge/data%20exfiltration-none-green)
+
+## Screenshots
+
+Real Google Chat with the extension on (names, avatars and content are anonymized stand-ins).
+
+| Aubergine · light | Aubergine · dark |
+| --- | --- |
+| ![Aubergine theme, light mode](store-assets/01-aubergine-light.png) | ![Aubergine theme, dark mode](store-assets/02-aubergine-dark.png) |
+| **Jade · light** | **Jade · dark** |
+| ![Jade theme, light mode](store-assets/03-jade-light.png) | ![Jade theme, dark mode](store-assets/04-jade-dark.png) |
+
+The popup — pick a theme (light/dark follows your Google Chat setting automatically) and toggle any feature:
+
+<img src="store-assets/popup.png" alt="Slackify popup: theme picker and per-feature toggles" width="320">
 
 ## Features
 
