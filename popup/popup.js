@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * popup.js — the settings UI. Reads/writes preferences to chrome.storage.sync under "prefs".
  * The content script (apply.js) listens for storage changes and re-applies instantly.
@@ -69,11 +70,12 @@
   }
 
   function render() {
-    $('sf-enabled').checked = prefs.enabled;
-    $('sf-theme').value = prefs.theme;
+    /** @type {HTMLInputElement} */ ($('sf-enabled')).checked = prefs.enabled;
+    /** @type {HTMLSelectElement} */ ($('sf-theme')).value = prefs.theme;
     document.querySelectorAll('#sf-features input[data-feat]').forEach((i) => {
-      i.checked = !!prefs.features[i.dataset.feat];
-      i.disabled = !prefs.enabled;
+      const input = /** @type {HTMLInputElement} */ (i);
+      input.checked = !!prefs.features[input.dataset.feat];
+      input.disabled = !prefs.enabled;
     });
     document.querySelectorAll('.sf-section, .sf-foot').forEach((el) => {
       el.classList.toggle('sf-disabled', !prefs.enabled);
@@ -81,8 +83,8 @@
   }
 
   function wire() {
-    $('sf-enabled').addEventListener('change', (e) => { prefs.enabled = e.target.checked; save(); render(); });
-    $('sf-theme').addEventListener('change', (e) => { prefs.theme = e.target.value; save(); });
+    $('sf-enabled').addEventListener('change', (e) => { prefs.enabled = /** @type {HTMLInputElement} */ (e.target).checked; save(); render(); });
+    $('sf-theme').addEventListener('change', (e) => { prefs.theme = /** @type {HTMLSelectElement} */ (e.target).value; save(); });
     $('sf-reset').addEventListener('click', () => { prefs = mergeDefaults(); save(); render(); });
   }
 

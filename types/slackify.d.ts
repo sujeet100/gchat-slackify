@@ -1,0 +1,71 @@
+/*
+ * slackify.d.ts — ambient types for the cross-file SLACKIFY_* globals.
+ *
+ * Each src/*.js file is an IIFE that assigns to globalThis (the project's deliberately build-free
+ * "module system"). Declaring those globals here lets `// @ts-check` verify usage ACROSS files —
+ * e.g. a typo'd `C.firstMatchEll(...)` or a wrong arg count becomes a compile-time error, with no
+ * bundler and no change to the shipped JS.
+ */
+
+/** A user preference set (persisted under `chrome.storage.sync` key "prefs"). */
+interface SfPrefs {
+  enabled: boolean;
+  theme: string;
+  mode?: 'light' | 'dark';
+  features: Record<string, boolean>;
+}
+
+/** An independently toggleable feature (drives `html[data-sf-feat-<id>]` + the popup). */
+interface SfFeature {
+  id: string;
+  label: string;
+  default: boolean;
+  desc: string;
+}
+
+/** config.js — the single source of truth for selectors, features, defaults, and helpers. */
+interface SfConfig {
+  SELECTORS: Record<string, string[]>;
+  TAGS: Record<string, string>;
+  FEATURES: SfFeature[];
+  DEFAULT_PREFS: SfPrefs;
+  sel(key: string): string;
+  firstMatchEl(key: string, root?: ParentNode): Element | null;
+  allMatchEls(key: string, root?: ParentNode): Element[];
+}
+
+/** A theme palette for one appearance mode (sidebar + top bar colors). */
+interface SfThemeMode {
+  bg: string;
+  active: string;
+  text: string;
+  activeText: string;
+  presence: string;
+  mention: string;
+  hoverOverlay: string;
+  topBg: string;
+  topText: string;
+}
+
+/** A Slack theme with an explicit palette per light/dark mode. */
+interface SfTheme {
+  id: string;
+  label: string;
+  isDark: boolean;
+  modes: { light: SfThemeMode; dark: SfThemeMode };
+}
+
+/** themes.js — theme palettes + message-area mode accents. */
+interface SfThemes {
+  THEMES: SfTheme[];
+  MODES: Record<'light' | 'dark', Record<string, string>>;
+}
+
+/** styles.js — compiles the whole stylesheet from config + themes. */
+interface SfStyles {
+  buildCSS(): string;
+}
+
+declare var SLACKIFY_CONFIG: SfConfig;
+declare var SLACKIFY_THEMES: SfThemes;
+declare var SLACKIFY_STYLES: SfStyles;

@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * styles.js — compiles the whole stylesheet from config.js + themes.js.
  *
@@ -18,13 +19,24 @@
 
   // Scope a selector under the conversation pane ([role="main"]) using the centralized selector,
   // so even composite "in the message area" rules don't hard-code the role string.
+  /** Prefix `s` with each conversation-pane selector. @param {string} s @returns {string[]} */
   const inMain = (s) => SEL.conversationPane.map((p) => `${p} ${s}`);
 
+  /** Render a declarations object as `  prop: value !important;` lines. @param {Record<string,string>} o @returns {string} */
   const decls = (o) => Object.entries(o).map(([k, v]) => `  ${k}: ${v} !important;`).join('\n');
 
   // mk(feature|null, selectorsArray, extra, declsObj)
   //   extra is appended to each selector (e.g. ":hover", " *:not(img)", " " + TAG.x)
   //   the scope prefix is distributed across every selector in the (fallback) array.
+  /**
+   * Build one feature-gated CSS rule. The `html[data-sf-on][data-sf-feat-<feature>]` scope prefix is
+   * distributed across every selector in the fallback array.
+   * @param {string|null} feature feature id to gate on, or null for the always-on base scope
+   * @param {string[]} sels selector(s) — a config fallback array
+   * @param {string} extra appended to each selector (e.g. ":hover", "::before", " *")
+   * @param {Record<string,string>} d declarations (each emitted with !important)
+   * @returns {string}
+   */
   function mk(feature, sels, extra, d) {
     const prefix = feature ? `html[data-sf-on][data-sf-feat-${feature}]` : 'html[data-sf-on]';
     const full = sels.map((s) => `${prefix} ${s}${extra || ''}`).join(',\n');

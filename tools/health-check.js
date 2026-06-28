@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * health-check.js — breakage radar.
  *

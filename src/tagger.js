@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * tagger.js — stamps stable [data-slackify="…"] attributes on elements that lack a durable
  * native hook, so styles.js can target our attributes (never expensive :has() in the CSS).
@@ -206,6 +207,7 @@
   // The highest ancestor (up to `topic`) that GChat right-aligns — i.e. carries a flex-end
   // alignment. For YOUR OWN messages this is the per-message column; tagging it lets CSS flip the
   // whole message into the left column. Returns null for a normally-aligned (other-person) element.
+  /** @param {Element} start @param {Element} topic scan boundary @returns {Element|null} */
   function highestRightAlignedAncestor(start, topic) {
     let found = null;
     for (let n = start, i = 0; n && n !== topic && i < 10; n = n.parentElement, i++) {
@@ -222,6 +224,7 @@
   // our tags — so we re-scan instead of trusting processedTopics. This is what makes a newly-sent
   // message settle into the Slack layout immediately, without needing a conversation switch.
   const topicAnchor = new WeakMap();
+  /** Scan one message topic once (cached): tag bubbles, dates, wides, self-rows, avatars. @param {Element} topic */
   function scanTopic(topic) {
     const anchor = topicAnchor.get(topic);
     if (processedTopics.has(topic) && anchor && anchor.isConnected) return;   // done & not re-rendered
@@ -383,14 +386,15 @@
   let selfAvatarSet = false;
   function ensureSelfAvatar() {
     if (selfAvatarSet) return;
-    const img = C.firstMatchEl('selfAvatar');
+    const img = /** @type {HTMLImageElement | null} */ (C.firstMatchEl('selfAvatar'));
     const src = img && (img.currentSrc || img.src);
     if (!src) return;
     document.documentElement.style.setProperty('--sf-self-avatar', `url("${src}")`);
     // Name from the account button's aria-label ("Google Account: Jane Doe \n(jane@x.com)"): drop the
     // localized "…:" prefix and the "(email)", collapse whitespace. JSON.stringify quotes it for CSS
     // content. If we can't derive a name, the CSS var stays unset and content falls back to "You".
-    const label = (img.closest('[aria-label]') || {}).getAttribute ? img.closest('[aria-label]').getAttribute('aria-label') : '';
+    const labelEl = img.closest('[aria-label]');
+    const label = labelEl ? labelEl.getAttribute('aria-label') : '';
     const name = (label || '').replace(/^[^:]*:\s*/, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
     if (name) document.documentElement.style.setProperty('--sf-self-name', JSON.stringify(name));
     selfAvatarSet = true;
@@ -398,6 +402,7 @@
 
   // ---- the pass: cheap region work when the tree changed, then chunked visible-topic scans ----
   let dirty = true;
+  /** One throttled idle pass: cheap region work (when dirty) + chunked visible-topic scans. @param {IdleDeadline} [deadline] */
   function pass(deadline) {
     if (dirty) {
       dirty = false;
@@ -423,7 +428,7 @@
     if (topicQueue.size) schedule();
   }
 
-  const ric = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ timeRemaining: () => 8 }), 250));
+  const ric = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ didTimeout: false, timeRemaining: () => 8 }), 250));
   let scheduled = false;
   function schedule() {
     if (scheduled) return;

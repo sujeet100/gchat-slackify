@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * apply.js — orchestrator. Injects the generated stylesheet (+ bundled Lato @font-face) once,
  * reflects the user's saved prefs onto <html data-sf-*>, and AUTO-detects light/dark from Google

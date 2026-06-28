@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * config.js — the SINGLE source of truth for selectors, features, and defaults.
  *
@@ -147,6 +148,7 @@
     { id: 'dimmeetings',  label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },
   ];
 
+  /** @type {SfPrefs} */
   const DEFAULT_PREFS = {
     enabled: true,
     theme: 'aubergine',     // see themes.js

@@ -26,6 +26,8 @@ jobs:
         run: npm run check
       - name: Lint
         run: npm run lint
+      - name: Type-check (// @ts-check, no build)
+        run: npm run typecheck
       - name: Validate extension contract (permissions / scope / no network)
         run: npm run validate
       - name: Tests (performance contract)

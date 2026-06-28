@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * controls.js — injects a self-owned "Hide meetings" switch into Google Chat's Home filter row,
  * right next to Chat's own "Unread" toggle. Clicking it flips prefs.features.hidemeetings in
@@ -26,12 +27,14 @@
   const FEAT = 'hidemeetings';
 
   // ---- preferences mirror (kept in sync with chrome.storage.sync) ----
+  /** @type {{ enabled: boolean, features: Record<string, boolean> }} */
   let prefs = { enabled: C.DEFAULT_PREFS.enabled, features: Object.assign({}, C.DEFAULT_PREFS.features) };
+  /** @param {() => void} [cb] */
   function readPrefs(cb) {
     try {
       chrome.storage.sync.get('prefs', (res) => {
         const d = C.DEFAULT_PREFS;
-        const saved = (res && res.prefs) || {};
+        const saved = /** @type {Partial<SfPrefs>} */ ((res && res.prefs) || {});
         prefs = {
           enabled: saved.enabled !== undefined ? saved.enabled : d.enabled,
           features: Object.assign({}, d.features, saved.features || {}),
@@ -41,11 +44,12 @@
     } catch (e) { if (cb) cb(); }   // not an extension context → keep defaults
   }
   // Read-modify-write so we never clobber other prefs (theme, other features) written elsewhere.
+  /** @param {boolean} on */
   function writeFeat(on) {
     prefs.features[FEAT] = on;
     try {
       chrome.storage.sync.get('prefs', (res) => {
-        const p = Object.assign({}, (res && res.prefs) || {});
+        const p = /** @type {Partial<SfPrefs>} */ (Object.assign({}, (res && res.prefs) || {}));
         p.features = Object.assign({}, p.features || {}, { [FEAT]: on });
         try { chrome.storage.sync.set({ prefs: p }); } catch (e) {}
       });
@@ -128,7 +132,7 @@
     for (const s of (C.SELECTORS.unreadToggle || [])) {
       try {
         for (const node of document.querySelectorAll(s)) {
-          if (node.offsetParent === null || node.getBoundingClientRect().width <= 0) continue;
+          if (/** @type {HTMLElement} */ (node).offsetParent === null || node.getBoundingClientRect().width <= 0) continue;
           if (sidebar && sidebar.contains(node)) continue;   // skip sidebar section toggles
           return node;
         }
@@ -164,7 +168,7 @@
   }
 
   // ---- scheduling: O(1) observer → dirty flag → throttled idle pass ----
-  const ric = window.requestIdleCallback || ((fn) => setTimeout(() => fn(), 250));
+  const ric = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ didTimeout: true, timeRemaining: () => 0 }), 250));
   let scheduled = false, dirty = true;
   function pass() { scheduled = false; if (!dirty) return; dirty = false; try { sync(); } catch (e) {} }
   function schedule() { if (scheduled) return; scheduled = true; ric(pass, { timeout: 1000 }); }

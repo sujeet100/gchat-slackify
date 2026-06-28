@@ -14,8 +14,9 @@
     "check": "node --check src/config.js && node --check src/themes.js && node --check src/styles.js && node --check src/apply.js && node --check src/tagger.js && node --check src/controls.js && node --check popup/popup.js",
     "lint": "eslint src popup tools test eslint.config.js",
     "lint:fix": "eslint --fix src popup tools test eslint.config.js",
+    "typecheck": "tsc -p tsconfig.json",
     "validate": "node tools/validate-manifest.js",
-    "ci": "npm run check && npm run lint && npm run validate && npm test"
+    "ci": "npm run check && npm run lint && npm run typecheck && npm run validate && npm test"
   },
   "keywords": [
     "chrome-extension",
@@ -26,6 +27,8 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "eslint": "^9.39.4"
+    "@types/chrome": "^0.2.0",
+    "eslint": "^9.39.4",
+    "typescript": "^6.0.3"
   }
 }

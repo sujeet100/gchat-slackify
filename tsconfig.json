@@ -1,0 +1,24 @@
+{
+  // Type-checks the plain JS via `// @ts-check` — NO build step (MV3 ships the .js as-is).
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["chrome"],
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // strictNullChecks is intentionally OFF: every DOM derivation is wrapped in try/catch
+    // (rule #6 "the host must never break"), so a null deref is a caught no-op, not a bug —
+    // enabling it would force redundant optional-chaining everywhere. We keep the high-value
+    // checks (typos, wrong property/method, arg counts, undefined globals) on.
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false
+  },
+  "include": ["src/**/*.js", "popup/**/*.js", "tools/health-check.js", "types/**/*.d.ts"]
+}

@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * themes.js — Slack color themes, MODE-REACTIVE like the real Slack client.
  *
@@ -21,21 +22,30 @@
  */
 ;(function () {
   // ---- deterministic color helpers (so derived shades are computed, never guessed) ----
+  /** Parse a `#RRGGBB` string into `[r, g, b]` (each 0–255). @param {string} h @returns {number[]} */
   const toRgb = (h) => { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+  /** Serialize `[r, g, b]` channels to an uppercase `#RRGGBB` string (clamped). @param {number[]} channels @returns {string} */
   const toHex = (channels) => '#' + channels.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase();
-  const darken = (hex, amount) => toHex(toRgb(hex).map((v) => v * (1 - amount)));          // mix toward black
-  const lighten = (hex, amount) => toHex(toRgb(hex).map((v) => v + (255 - v) * amount));   // mix toward white
+  /** Mix a hex color toward black. @param {string} hex @param {number} amount 0–1 @returns {string} */
+  const darken = (hex, amount) => toHex(toRgb(hex).map((v) => v * (1 - amount)));
+  /** Mix a hex color toward white. @param {string} hex @param {number} amount 0–1 @returns {string} */
+  const lighten = (hex, amount) => toHex(toRgb(hex).map((v) => v + (255 - v) * amount));
+  /** Perceived luminance (0–255) of a hex color. @param {string} hex @returns {number} */
   const luminance = (hex) => { const [r, g, b] = toRgb(hex); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-  const readableInk = (hex) => (luminance(hex) > 140 ? '#1D1C1D' : '#FFFFFF');             // readable text color on bg `hex`
+  /** A readable ink color (near-black or white) for text on background `hex`. @param {string} hex @returns {string} */
+  const readableInk = (hex) => (luminance(hex) > 140 ? '#1D1C1D' : '#FFFFFF');
+  /** Build an `rgba(...)` string from a hex color + alpha. @param {string} hex @param {number} alpha @returns {string} */
   const rgba = (hex, alpha) => { const [r, g, b] = toRgb(hex); return `rgba(${r}, ${g}, ${b}, ${alpha})`; };
   // Hover overlay: Slack's LIGHT themes wash a hovered (non-active) row in a PALE TINT OF THE
   // BRAND color — never grey; DARK themes use a subtle white wash. So derive it from the brand.
+  /** @param {string} bg sidebar background @param {string} active brand/active color @returns {string} */
   const hoverWash = (bg, active) => (luminance(bg) < 140 ? 'rgba(255,255,255,0.08)' : rgba(active, 0.12));
   // Inactive sidebar text: Slack's LIGHT themes TINT the channel-list text with the brand hue
   // (aubergine shows clearly PURPLE text, not black). We keep the brand hue but pull it to a
   // readable luminance on the pale sidebar: a very dark brand (deep purple/indigo) is lightened a
   // touch so the hue is visible; a lighter mid-tone brand (green/orange) is darkened a touch for
   // contrast. Light-hued brands (banana/barbra) fall back to near-black so text stays readable.
+  /** @param {string} active the theme's active/brand color @returns {string} */
   const brandText = (active) => {
     if (luminance(active) > 140) return '#1D1C1D';
     return luminance(active) < 70 ? lighten(active, 0.12) : darken(active, 0.15);
@@ -47,6 +57,15 @@
   // TOP-BAR colors. In Slack's LIGHT themes the top nav is the DARK, saturated brand (darker than
   // the pale channel list) with white text — so light-mode topBg = a deep brand shade. In DARK
   // mode the top nav matches the dark rail. (topBg/topText decouple the bar from the sidebar.)
+  /**
+   * @param {string} bg sidebar background
+   * @param {string} active active-item / brand color
+   * @param {string} text inactive sidebar text color
+   * @param {string} [activeText] text on the active item (defaults to readable ink on `active`)
+   * @param {string} [presence] presence-dot color (defaults to the shared green)
+   * @param {string} [mention] mention color (defaults to the shared red)
+   * @returns {SfThemeMode}
+   */
   const palette = (bg, active, text, activeText, presence, mention) => {
     const lightMode = luminance(bg) > 140;
     const topBg = lightMode ? darken(active, 0.35) : bg;   // deep saturated brand (light) / dark rail (dark)
@@ -62,12 +81,18 @@
   };
 
   // Explicit (sampled) theme with both modes hand-specified.
+  /** @param {string} id @param {string} label @param {boolean} isDark @param {SfThemeMode} light @param {SfThemeMode} dark @returns {SfTheme} */
   const explicitTheme = (id, label, isDark, light, dark) => ({ id, label, isDark, modes: { light, dark } });
 
   // Theme derived from a single sampled identity (swatch) color, matching the real Slack client:
   //   light: PALE tint sidebar (Slack's light "channel list"), dark text, the saturated identity
   //          reserved for the active item so the selected conversation pops.
   //   dark:  very dark tint of the hue, brighter accent for the active item.
+  /**
+   * @param {string} id @param {string} label @param {string} identity sampled swatch color
+   * @param {{ darkBg?: string, presence?: string, mention?: string }} [opts]
+   * @returns {SfTheme}
+   */
   const derivedTheme = (id, label, identity, opts) => {
     opts = opts || {};
     const isLight = luminance(identity) > 140;
