@@ -1,0 +1,41 @@
+name: Release
+
+# Tag a release (e.g. `git tag v0.16.0 && git push --tags`) to build a clean, store-ready zip
+# and attach it to a GitHub Release. The zip contains ONLY the files the extension ships —
+# no tests, docs, tooling, configs, or node_modules.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Gate release on the full check suite
+        run: npm run ci
+      - name: Verify tag matches manifest version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST="$(node -p "require('./manifest.json').version")"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::tag v$TAG does not match manifest version $MANIFEST"; exit 1
+          fi
+      - name: Build extension zip
+        run: |
+          ZIP="slackify-for-google-chat-${GITHUB_REF_NAME}.zip"
+          zip -r "$ZIP" manifest.json src popup icons fonts -x '*.DS_Store'
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "$ZIP" --generate-notes --title "$GITHUB_REF_NAME"

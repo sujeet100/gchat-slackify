@@ -1,16 +1,31 @@
 {
   "name": "gchat-slackify",
-  "version": "0.2.0",
+  "version": "0.16.0",
   "description": "Make Google Chat look and feel like Slack. Cosmetic, lightweight, and private — no data leaves your browser.",
-  "homepage": "https://github.com/REPLACE_ME/gchat-slackify",
+  "homepage": "https://github.com/sujeet100/gchat-slackify",
   "license": "MIT",
   "private": false,
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/config.js && node --check src/themes.js && node --check src/styles.js && node --check src/apply.js && node --check src/tagger.js && node --check src/controls.js && node --check popup/popup.js"
+    "check": "node --check src/config.js && node --check src/themes.js && node --check src/styles.js && node --check src/apply.js && node --check src/tagger.js && node --check src/controls.js && node --check popup/popup.js",
+    "lint": "eslint src popup tools test eslint.config.js",
+    "lint:fix": "eslint --fix src popup tools test eslint.config.js",
+    "validate": "node tools/validate-manifest.js",
+    "ci": "npm run check && npm run lint && npm run validate && npm test"
   },
-  "keywords": ["chrome-extension", "google-chat", "slack", "theme", "manifest-v3"],
-  "dependencies": {},
-  "devDependencies": {}
+  "keywords": [
+    "chrome-extension",
+    "google-chat",
+    "slack",
+    "theme",
+    "manifest-v3"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4"
+  }
 }

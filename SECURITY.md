@@ -4,9 +4,16 @@
 
 Slackify for Google Chat is built to be **provably low-risk**:
 
-- **No network access.** The extension contains no `fetch`, `XMLHttpRequest`, `WebSocket`, or
-  beacon code, and requests no host permissions beyond the Chat content-script match. It is
-  technically incapable of sending data off the device.
+- **No data exfiltration.** The extension contains no `fetch`, `XMLHttpRequest`, `WebSocket`, or
+  beacon code, and requests no host permissions. It has no code path that transmits page or user
+  data anywhere — it is structurally incapable of sending your data off the device.
+  - **The only outbound requests** are two `GET`s for Google-hosted **images**, referenced from
+    CSS and constrained by Google Chat's own page CSP (so the extension cannot point them at an
+    arbitrary host): the dark-mode Chat logo on `ssl.gstatic.com`, and — for the "Slack-style own
+    messages" feature — your own avatar on `lh3.googleusercontent.com` (the same image Chat already
+    loads in the account button). Neither carries any extension-originated data. This is verifiable
+    with `chrome://net-export` or any proxy: the *only* extension-initiated requests are those image
+    `GET`s, with zero `POST`s and zero third-party domains.
 - **No remote code.** All code ships in the package; MV3 forbids remote execution, and we add
   no `eval`/`new Function`.
 - **Minimal permissions.** Only `storage` (to save your settings). No `tabs`, `scripting`,

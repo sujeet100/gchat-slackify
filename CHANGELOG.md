@@ -6,6 +6,28 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-06-28
+
+### Added
+- **Slack-style own messages** (`selfslack`, default on): your own messages are left-aligned into the
+  main column with your avatar and bold name, instead of right-aligned blue bubbles. The avatar and
+  name are read from the account button into CSS variables and painted via pseudo-elements — no node
+  is injected into Chat's message stream.
+- **CI** (GitHub Actions): lint + syntax check + tests + an extension-contract validator on every push
+  and PR; a tag-triggered release workflow that builds a clean, store-ready zip.
+- **Tooling**: ESLint (flat config), EditorConfig, `.nvmrc`, `tools/validate-manifest.js` (enforces the
+  permissions / no-network / version-sync rules as a hard gate), and behavioral tests for the build layer.
+
+### Fixed
+- Newly-sent messages now adopt the Slack layout immediately (Wiz re-render detection) instead of
+  reverting to the right until you switched conversations and back.
+- The "seen by" read-receipt thumbnail is no longer enlarged to a 36px square.
+
+### Changed
+- Renamed `themes.js` color helpers for readability and removed the dead `--sf-status-chip-text`
+  variable. Synced the `package.json` version, fixed repository URLs, refreshed the README badges and
+  theme list, and documented the two image requests in `SECURITY.md`.
+
 ## [0.12.0] — 2026-06-27
 
 ### Changed

@@ -4,11 +4,11 @@ A Chrome extension that makes **Google Chat** ([chat.google.com](https://chat.go
 
 > Cosmetic only. **No data ever leaves your browser.** No network calls, no remote code, no tracking. The only permission is `storage` (to save your settings). [See privacy →](PRIVACY.md)
 
-![status](https://img.shields.io/badge/status-v0.2-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![network](https://img.shields.io/badge/network-none-green)
+[![CI](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-v0.16.0-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![data exfiltration](https://img.shields.io/badge/data%20exfiltration-none-green)
 
 ## Features
 
-- 🎨 **12 Slack themes** — Aubergine, Monument, Choco Mint, Ochin, Work Hard, Hoth, Space Gray, Dracula, Netflix, Mint, Clean, High Contrast
+- 🎨 **9 Slack themes** — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast)
 - 🌗 **Light / dark mode** for the message area (independent of the sidebar theme, exactly like Slack)
 - 🎛️ **Per-feature toggles** — turn any piece on/off from the popup:
   themed sidebar, themed top bar, flat messages, full-width/left-aligned messages, compact
