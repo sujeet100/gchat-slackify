@@ -65,6 +65,18 @@ test('selfslack feature + selfRow tag + selfAvatar selector are wired', () => {
   assert.ok(Array.isArray(C.SELECTORS.selfAvatar) && C.SELECTORS.selfAvatar.length >= 2, 'selfAvatar needs a fallback chain');
 });
 
+test('selfslack timestamp/grouping is wired: self-meta tag, durable timestamp hook, generated rules', () => {
+  // config: own-message timestamp header (self-meta) + the durable Google hook that tagger keys off
+  assert.ok(C.TAGS.selfMeta && C.TAGS.selfMeta.includes('self-meta'), 'selfMeta tag missing');
+  assert.ok(Array.isArray(C.SELECTORS.messageTimestamp) && C.SELECTORS.messageTimestamp.length >= 1, 'messageTimestamp selector missing');
+  assert.match(C.SELECTORS.messageTimestamp[0], /data-absolute-timestamp/, 'messageTimestamp must hook the durable [data-absolute-timestamp] attr');
+  // generated CSS: name sits on the time line (self-meta ::before = --sf-self-name), and grouped
+  // follow-ups (data-sf-self-notime) hide the repeated avatar. Both gated behind selfslack.
+  assert.ok(css.includes('[data-slackify="self-meta"]'), 'self-meta rule (name on the time line) not generated');
+  assert.ok(css.includes('--sf-self-name'), 'self name variable not used in the header');
+  assert.ok(css.includes('[data-sf-self-notime]'), 'grouped follow-up (notime) rule not generated');
+});
+
 // ---------- generated CSS ----------
 test('CSS is generated from config: a block per theme×mode, and a mode block per MODE', () => {
   for (const t of THEMES) {
