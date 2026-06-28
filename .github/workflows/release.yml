@@ -1,19 +1,28 @@
 name: Release
 
-# Tag a release (e.g. `git tag v0.16.0 && git push --tags`) to build a clean, store-ready zip
-# and attach it to a GitHub Release. The zip contains ONLY the files the extension ships —
-# no tests, docs, tooling, configs, or node_modules.
+# Tag a release (e.g. `git tag v0.16.0 && git push --tags`) to:
+#   - `release` job (always): gate on full CI + verify tag == manifest.json, build a clean
+#     store-ready zip, attach it to a GitHub Release.
+#   - `publish-chrome` job (opt-in + approval-gated): upload that SAME zip to the Chrome Web Store
+#     AS A DRAFT (you click "Publish" in the dashboard).
+#
+# The publish job runs ONLY when repo variable PUBLISH_TO_CWS == 'true', and is gated by the
+# `chrome-web-store` Environment — add a required reviewer there so the job (and the secrets) wait
+# for your one-click approval. Keep the four CWS_* values as ENVIRONMENT secrets on that
+# Environment so they exist only for this job. Full setup: docs/RELEASING.md.
 
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  package:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,7 +44,36 @@ jobs:
           ZIP="slackify-for-google-chat-${GITHUB_REF_NAME}.zip"
           zip -r "$ZIP" manifest.json src popup icons fonts -x '*.DS_Store'
           echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+      - name: Stash the zip for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: ${{ env.ZIP }}
+          retention-days: 7
+          if-no-files-found: error
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" "$ZIP" --generate-notes --title "$GITHUB_REF_NAME"
+
+  publish-chrome:
+    needs: release
+    if: vars.PUBLISH_TO_CWS == 'true'   # opt-in flag; unset → job is skipped entirely (no approval prompt)
+    runs-on: ubuntu-latest
+    environment: chrome-web-store        # add a required reviewer here → secrets gated behind approval
+    env:
+      EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+      CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch the built zip
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-zip
+      - name: Upload to Chrome Web Store (draft — publish manually in the dashboard)
+        # exact-pinned: a floating major could pull a compromised release into a job that holds secrets
+        run: npx --yes chrome-webstore-upload-cli@4.0.1 upload --source "slackify-for-google-chat-${GITHUB_REF_NAME}.zip"
