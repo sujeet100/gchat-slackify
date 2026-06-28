@@ -245,9 +245,10 @@
     // bubble itself is removed by the separate 'flatten' feature (the bubble is also tagged 'bubble').
     const selfRow = inMain(TAG.selfRow);
     // Left-align the column AND set justify-start, so it works whether the tagged row is a flex column
-    // (right-aligned via align-items) or a flex row (via justify-content). 44px = 36px avatar + 8 gap;
-    // 20px top reserves a line for the synthetic name header (GChat shows no visible self-name).
-    parts.push(mk('selfslack', selfRow, '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'position': 'relative', 'padding-left': '44px', 'padding-top': '20px', 'box-sizing': 'border-box' }));
+    // (right-aligned via align-items) or a flex row (via justify-content). 44px = 36px avatar + 8 gap.
+    // No padding-top: group-first keeps GChat's header (name+time) in normal flow (tight spacing); only
+    // grouped follow-ups (data-sf-self-notime) reserve a line for their ::after name — see below.
+    parts.push(mk('selfslack', selfRow, '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'position': 'relative', 'padding-left': '44px', 'box-sizing': 'border-box' }));
     // Undo the nested right-push on descendants so the content sits at the left. The inner flex-end
     // levels are content-width no-ops today, but resetting them future-proofs deeper/altered trees.
     parts.push(mk('selfslack', selfRow, ' *', { 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
@@ -259,15 +260,22 @@
       'background-image': 'var(--sf-self-avatar, none)', 'background-color': 'var(--sf-msg-hover)',
       'background-size': 'cover', 'background-position': 'center', 'background-repeat': 'no-repeat',
     }));
-    // The bold sender-name header (Slack shows your full name on your own messages). tagger.js puts
-    // your name in --sf-self-name; if it can't be derived, content falls back to "You" (GChat's own
-    // term for yourself — it labels your messages "You" in spaces).
-    parts.push(mk('selfslack', selfRow, '::after', {
-      'content': 'var(--sf-self-name, "You")',
-      'position': 'absolute', 'left': '44px', 'top': '0',
+    // The bold sender-name header (Slack shows your full name on your own messages). tagger.js tags
+    // the timestamp's header row "self-meta"; we leave it IN FLOW (its natural spot, above the body)
+    // and just prefix the name via ::before, so "Name  time" sit on ONE line with GChat's own tight
+    // header→body spacing (no extra reserved gap). --sf-self-name is set by tagger; falls back to "You".
+    const selfMeta = inMain(TAG.selfMeta);
+    parts.push(mk('selfslack', selfMeta, '', { 'align-items': 'baseline' }));
+    parts.push(mk('selfslack', selfMeta, '::before', {
+      'content': 'var(--sf-self-name, "You")', 'margin-right': '8px',
       'font-weight': '700', 'font-size': '15px', 'line-height': '18px',
-      'color': 'var(--sf-content-text)',
+      'color': 'var(--sf-content-text)', 'white-space': 'nowrap',
     }));
+    // Grouped follow-up own-messages (tagger marks them data-sf-self-notime): no visible header, so
+    // hide the repeated avatar and show just the body — the 44px left padding keeps it aligned under
+    // the group, exactly like Slack's message grouping.
+    const selfNoTime = inMain(`${TAG.selfRow}[data-sf-self-notime]`);
+    parts.push(mk('selfslack', selfNoTime, '::before', { 'display': 'none' }));
 
     // ===== THREAD REPLIES (Slack-style "N replies" link chip) =====
     // tagger.js tags the clickable reply affordance [data-slackify="thread-chip"] and the count

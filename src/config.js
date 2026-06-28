@@ -64,6 +64,11 @@
     // and locale-independent, present on every thread-with-replies row → a durable hook. tagger.js
     // tags the clickable button + the count span so CSS can render a Slack-style link chip.
     threadReply:      ['[role="main"] [data-last-reply-time-msec]'],
+    // A message timestamp ("1:39 AM"). data-absolute-timestamp + data-format are Google-owned and
+    // locale-independent → durable. tagger.js tags the timestamp's header row on YOUR OWN messages as
+    // "self-meta"; the "Slack-style own messages" feature then lifts your synthetic name onto that
+    // line (otherwise GChat's time drops to a line of its own under the name).
+    messageTimestamp: ['[role="main"] [data-absolute-timestamp]'],
     // top-search input + its autocomplete dropdown. The dropdown renders inside [role="banner"] but
     // OUTSIDE [role="search"] (verified live), so it's scoped to the banner — otherwise our search
     // re-ink rule misses it and the banner white-text rule leaves white-on-white result rows.
@@ -119,6 +124,9 @@
     // a colored self-bubble). tagger.js tags it so the "Slack-style own messages" feature can flip
     // it to the left column and drop your avatar into the gutter.
     selfRow:     '[data-slackify="self-row"]',
+    // The timestamp's header row on YOUR OWN messages — tagger tags it so selfslack can place the
+    // synthetic name on the same line as GChat's time (instead of the time dropping to its own row).
+    selfMeta:    '[data-slackify="self-meta"]',
   };
 
   // Independently toggleable features. attr = html[data-sf-feat-<id>].

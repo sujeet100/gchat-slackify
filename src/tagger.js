@@ -291,6 +291,25 @@
       if (selfRows.some((o) => o !== el && o.contains(el))) continue;
       el.setAttribute('data-slackify', 'self-row');
     }
+    // For each tagged self-row, tag the timestamp's "metadata unit" (the time + a11y commas, NEVER the
+    // body) "self-meta" so selfslack can place the synthetic name on the time's line. Durable hook:
+    // [data-absolute-timestamp]. We climb only while the ancestor still contains JUST the time text —
+    // so it can't accidentally grab the message row. Pure text reads, no getComputedStyle.
+    for (const el of topic.querySelectorAll('[data-slackify="self-row"]')) {
+      const t = el.querySelector('[data-absolute-timestamp]');
+      // Group-first messages show the time; grouped follow-ups have the timestamp element too but it's
+      // HIDDEN (revealed on hover) → no visible header. Detect "actually shown" via layout, and mark
+      // grouped rows so selfslack can hide the repeated avatar and show just the indented body (Slack).
+      const shown = !!t && t.offsetParent !== null && t.getBoundingClientRect().width > 0;
+      if (!shown) { el.setAttribute('data-sf-self-notime', ''); continue; }
+      el.removeAttribute('data-sf-self-notime');
+      const key = (t.textContent || '').replace(/[\s,]/g, '');
+      if (!key) continue;
+      let mr = t, hops = 0;
+      while (mr.parentElement && mr.parentElement !== el && hops < 5
+        && (mr.parentElement.textContent || '').replace(/[\s,]/g, '') === key) { mr = mr.parentElement; hops += 1; }
+      if (!mr.hasAttribute('data-slackify')) mr.setAttribute('data-slackify', 'self-meta');
+    }
     for (const el of wides) el.setAttribute('data-slackify-wide', '');   // separate attr (orthogonal to bubble)
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
     for (const el of msgRows) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'msgrow');
