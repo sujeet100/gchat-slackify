@@ -300,7 +300,7 @@
       // Group-first messages show the time; grouped follow-ups have the timestamp element too but it's
       // HIDDEN (revealed on hover) → no visible header. Detect "actually shown" via layout, and mark
       // grouped rows so selfslack can hide the repeated avatar and show just the indented body (Slack).
-      const shown = !!t && t.offsetParent !== null && t.getBoundingClientRect().width > 0;
+      const shown = !!t && t.getBoundingClientRect().width > 0; // display:none (grouped) → 0 width
       if (!shown) { el.setAttribute('data-sf-self-notime', ''); continue; }
       el.removeAttribute('data-sf-self-notime');
       const key = (t.textContent || '').replace(/[\s,]/g, '');

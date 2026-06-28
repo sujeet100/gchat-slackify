@@ -24,10 +24,10 @@ jobs:
     permissions:
       contents: write   # create the GitHub Release
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - name: Gate release on the full check suite
@@ -67,9 +67,9 @@ jobs:
       CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
       REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
       - name: Fetch the built zip
         uses: actions/download-artifact@v4
         with:
