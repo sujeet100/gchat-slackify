@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#611F69"/>
+      <stop offset="1" stop-color="#350B3A"/>
+    </linearGradient>
+    <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8A3D90"/>
+      <stop offset="1" stop-color="#611F69"/>
+    </linearGradient>
+  </defs>
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <!-- # logo -->
+  <g transform="translate(30,26)">
+    <rect width="56" height="56" rx="13" fill="url(#lg)"/>
+    <g transform="scale(0.4375)" stroke="#ffffff" stroke-width="11.8" stroke-linecap="round" fill="none">
+      <line x1="58.8" y1="37.1" x2="51.2" y2="90.9"/>
+      <line x1="79.3" y1="37.1" x2="71.7" y2="90.9"/>
+      <line x1="37.1" y1="55" x2="90.9" y2="55"/>
+      <line x1="37.1" y1="75.5" x2="90.9" y2="75.5"/>
+    </g>
+  </g>
+  <text x="100" y="52" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="34" font-weight="700" fill="#ffffff">Slackify</text>
+  <text x="101" y="75" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="17" fill="#D6C6DA">for Google Chat</text>
+  <text x="30" y="150" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="22" font-weight="600" fill="#ffffff">Make Google Chat feel like Slack</text>
+  <text x="30" y="182" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#C9B6CE">9 themes · light &amp; dark · per-feature toggles</text>
+  <text x="30" y="250" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#A98FAE">Cosmetic only · one permission · nothing leaves your browser</text>
+</svg>

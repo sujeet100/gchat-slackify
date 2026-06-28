@@ -20,6 +20,8 @@ The popup — pick a theme (light/dark follows your Google Chat setting automati
 
 <img src="store-assets/popup.png" alt="Slackify popup: theme picker and per-feature toggles" width="320">
 
+<sub>Chrome Web Store marketing tiles (small promo 440×280, marquee 1400×560) and their SVG sources live in [`store-assets/`](store-assets/).</sub>
+
 ## Features
 
 - 🎨 **9 Slack themes** — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast)
