@@ -1,10 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Slackify for Google Chat",
-  "version": "0.17.0",
+  "version": "1.0.0",
   "description": "Make Google Chat look and feel like Slack — themes, Lato font, auto light/dark, toggles. Cosmetic only; no data leaves your browser.",
   "homepage_url": "https://github.com/sujeet100/gchat-slackify",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -13,8 +15,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["fonts/*.woff2"],
-      "matches": ["https://chat.google.com/*", "https://mail.google.com/*"]
+      "resources": [
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "https://chat.google.com/*",
+        "https://mail.google.com/*"
+      ]
     }
   ],
   "action": {
@@ -29,16 +36,31 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://chat.google.com/*", "https://mail.google.com/chat/*"],
+      "matches": [
+        "https://chat.google.com/*",
+        "https://mail.google.com/chat/*"
+      ],
       "all_frames": true,
       "run_at": "document_start",
-      "js": ["src/config.js", "src/themes.js", "src/styles.js", "src/apply.js"]
+      "js": [
+        "src/config.js",
+        "src/themes.js",
+        "src/styles.js",
+        "src/apply.js"
+      ]
     },
     {
-      "matches": ["https://chat.google.com/*", "https://mail.google.com/chat/*"],
+      "matches": [
+        "https://chat.google.com/*",
+        "https://mail.google.com/chat/*"
+      ],
       "all_frames": true,
       "run_at": "document_idle",
-      "js": ["src/config.js", "src/tagger.js", "src/controls.js"]
+      "js": [
+        "src/config.js",
+        "src/tagger.js",
+        "src/controls.js"
+      ]
     }
   ]
 }

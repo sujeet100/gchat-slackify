@@ -6,6 +6,26 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-06-29
+
+First public release — ready for the Chrome Web Store.
+
+### Added
+- Chrome Web Store assets in `store-assets/`: anonymized 1280×800 screenshots (Aubergine + Jade,
+  light & dark) and the popup, plus small (440×280) and marquee (1400×560) promo tiles.
+- `docs/STORE-LISTING.md` — ready-to-paste listing copy + privacy/permission answers; and
+  `npm run package` to build the store zip locally.
+- `tools/anonymize-for-screenshots.js` — paste-in console scrubber for privacy-safe screenshots.
+- 32px toolbar icon (fixes a blank icon on Vivaldi / HiDPI Chromium toolbars).
+- Tests for the `selfslack` name/time/grouping CSS contract and manifest icon integrity.
+
+### Fixed
+- `selfslack`: your own message's name and timestamp now sit on one line (the time no longer drops to
+  a row of its own), and grouped follow-up messages hide the repeated avatar — Slack-style grouping.
+
+### Changed
+- CI runs on Node 24 and pins the public npm registry (fixes the `npm ci` auth failure).
+
 ## [0.16.0] — 2026-06-28
 
 ### Added

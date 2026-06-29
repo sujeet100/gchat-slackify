@@ -4,7 +4,7 @@ A Chrome extension that makes **Google Chat** ([chat.google.com](https://chat.go
 
 > Cosmetic only. **No data ever leaves your browser.** No network calls, no remote code, no tracking. The only permission is `storage` (to save your settings). [See privacy →](PRIVACY.md)
 
-[![CI](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-v0.17.0-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![data exfiltration](https://img.shields.io/badge/data%20exfiltration-none-green)
+[![CI](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeet100/gchat-slackify/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-v1.0.0-blue) ![permissions](https://img.shields.io/badge/permissions-storage%20only-green) ![data exfiltration](https://img.shields.io/badge/data%20exfiltration-none-green)
 
 ## Screenshots
 
