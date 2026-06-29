@@ -31,9 +31,10 @@ Visibility (public / unlisted / private-to-org) is a one-time setting in that da
 You only do this once.
 
 1. **Developer account** — register at the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) (one-time $5 fee).
-2. **Create the item manually, once** — upload the current zip in the dashboard so it gets an
-   **Extension ID** (CI can only *update* an existing item, not create it). Fill in the store listing
-   (description, screenshots, privacy fields — see `PRIVACY.md` / `SECURITY.md`).
+2. **Create the item manually, once** — run `npm run package`, upload the resulting zip in the
+   dashboard so it gets an **Extension ID** (CI can only *update* an existing item, not create it).
+   Fill in the store listing using the ready-to-paste copy + privacy answers in
+   [`STORE-LISTING.md`](STORE-LISTING.md) (graphics live in `store-assets/`).
 3. **API credentials** — create a Google Cloud project, enable the **Chrome Web Store API**, set up an
    OAuth consent screen, create an **OAuth client (Desktop app)** → Client ID + Secret. Then mint a
    **refresh token** (scope `https://www.googleapis.com/auth/chromewebstore`). Canonical walkthrough:

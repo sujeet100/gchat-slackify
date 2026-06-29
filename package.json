@@ -16,7 +16,8 @@
     "lint:fix": "eslint --fix src popup tools test eslint.config.js",
     "typecheck": "tsc -p tsconfig.json",
     "validate": "node tools/validate-manifest.js",
-    "ci": "npm run check && npm run lint && npm run typecheck && npm run validate && npm test"
+    "ci": "npm run check && npm run lint && npm run typecheck && npm run validate && npm test",
+    "package": "rm -f slackify-for-google-chat.zip && zip -rq slackify-for-google-chat.zip manifest.json src popup icons fonts -x '*.DS_Store' && echo 'built slackify-for-google-chat.zip (upload this to the Chrome Web Store)'"
   },
   "keywords": [
     "chrome-extension",
