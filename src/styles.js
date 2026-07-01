@@ -14,7 +14,7 @@
  */
 ;(function () {
   const C = globalThis.SLACKIFY_CONFIG;
-  const { THEMES, MODES } = globalThis.SLACKIFY_THEMES;
+  const { THEMES, MODES, themeVarsCSS: themeVars } = globalThis.SLACKIFY_THEMES;
   const SEL = C.SELECTORS, TAG = C.TAGS;
 
   // Scope a selector under the conversation pane ([role="main"]) using the centralized selector,
@@ -50,19 +50,9 @@
     // Each theme emits a block per appearance mode: html[data-sf-theme="x"][data-sf-mode="light|dark"].
     // apply.js sets both attributes, so the sidebar recolors when Chat's light/dark mode changes —
     // replicating how one Slack theme renders very differently in light vs dark (see themes.js).
-    for (const t of THEMES) {
-      for (const mode of ['light', 'dark']) {
-        const m = t.modes[mode];
-        parts.push(
-          `html[data-sf-theme="${t.id}"][data-sf-mode="${mode}"]{` +
-          `--sf-side-bg:${m.bg};--sf-side-active-bg:${m.active};` +
-          `--sf-side-active-text:${m.activeText};--sf-side-text:${m.text};` +
-          `--sf-top-bg:${m.topBg};--sf-top-text:${m.topText};` +
-          `--sf-presence:${m.presence};--sf-mention:${m.mention};` +
-          `--sf-side-hover-overlay:${m.hoverOverlay};}`
-        );
-      }
-    }
+    // themeVarsCSS() is the shared renderer — user-defined CUSTOM themes emit the identical block at
+    // runtime (apply.js), so the built-in and custom paths can never drift apart.
+    for (const t of THEMES) parts.push(themeVars(t));
     // ---- mode variable blocks (content area accents) ----
     for (const [id, m] of Object.entries(MODES)) {
       parts.push(
@@ -95,6 +85,14 @@
     // dark mode) that would otherwise occlude it — leaving the theme visible only on hover.
     parts.push(mk('sidebar', [TAG.rail], '', { 'background-color': 'var(--sf-side-bg)' }));
     parts.push(mk('sidebar', [TAG.rail], ' *:not(img):not(image)', { 'background-color': 'transparent', color: 'var(--sf-side-text)', 'border-color': 'transparent' }));
+    // Collapsed-sidebar hover flyout: when the rail is collapsed to an icon strip, hovering pops the
+    // full nav out as a c-wiz panel that OVERFLOWS the narrow rail-root box (verified live: root 104px,
+    // flyout c-wiz 320px). The root's --sf-side-bg only paints its own box, and the transparent rule
+    // above blanks the panel's native surface → the message list bled through the flyout. Re-paint the
+    // rail's c-wiz panel with the theme color so the flyout is backed. Specificity (c-wiz:not([hidden])
+    // = 0,1,1) beats the transparent rule (*:not(img):not(image) = 0,0,2); harmless when docked (same
+    // color as the root). Scoped to the rail, so the conversation pane is never touched.
+    parts.push(mk('sidebar', [TAG.rail], ' c-wiz:not([hidden])', { 'background-color': 'var(--sf-side-bg)' }));
     parts.push(mk('sidebar', [TAG.rail], ' svg', { fill: 'var(--sf-side-text)' }));
     // Suppress hover — single flat color, no hover change (Slack's sidebar has no hover highlight).
     // Also suppresses Google's own hover rules on these elements.
@@ -114,8 +112,12 @@
     // the [role="banner"] white text/icon rules above (otherwise GChat's native dark search text +
     // dropdown rows would be whitened to white-on-white on their light native surface). The dropdown
     // is a descendant of [role="search"], so this restores its native ink too. Mode-aware native ink.
-    parts.push(mk('topbar', SEL.search, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
-    parts.push(mk('topbar', SEL.search, ' svg', { fill: 'var(--sf-search-drop-text)' }));
+    // Anchor under [role="banner"] so this re-ink out-specifies the `header[role="banner"] *` white
+    // rule above (both !important) — otherwise it loses the specificity tie and the typed search text
+    // stays white-on-white in light mode (the input lives inside [role="search"] inside the banner).
+    const searchInBanner = SEL.search.map((s) => `${SEL.topBar[0]} ${s}`);
+    parts.push(mk('topbar', searchInBanner, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', searchInBanner, ' svg', { fill: 'var(--sf-search-drop-text)' }));
     // The search RESULTS dropdown renders in the banner but outside [role="search"], so the banner
     // white-text rule whitens its rows (white-on-white). Restore native ink on it (keeps it native).
     parts.push(mk('topbar', SEL.searchDropdown, '', { color: 'var(--sf-search-drop-text)' }));

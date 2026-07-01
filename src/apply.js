@@ -7,9 +7,11 @@
 ;(function () {
   const C = globalThis.SLACKIFY_CONFIG;
   const STYLES = globalThis.SLACKIFY_STYLES;
+  const T = globalThis.SLACKIFY_THEMES;
   if (!C || !STYLES) return;
 
   const STYLE_ID = 'slackify-styles';
+  const CUSTOM_STYLE_ID = 'slackify-custom-themes';
 
   // Bundled Lato (Slack's typeface). Loaded from the extension's own resources via
   // chrome.runtime.getURL — no network fetch, CSP-safe (declared in web_accessible_resources).
@@ -31,12 +33,38 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  // ----- custom themes: render each user-defined theme's CSS-var block into our own <style> -----
+  // The built-in themes are baked into the main sheet; custom themes are user DATA, so we generate
+  // their identical var blocks (same renderer, themeVarsCSS) at runtime and refresh on every prefs
+  // change. Each block is scoped to html[data-sf-theme="cst-N"], so it only takes effect when that
+  // theme is selected — inert otherwise, zero cost. Per rule #6, a malformed color can never break
+  // the host: buildCustomTheme is wrapped, so a bad entry is skipped, not thrown.
+  function injectCustomThemes(customThemes) {
+    if (!T || !T.buildCustomTheme) return;
+    let el = document.getElementById(CUSTOM_STYLE_ID);
+    if (!el) {
+      el = document.createElement('style');
+      el.id = CUSTOM_STYLE_ID;
+      (document.head || document.documentElement).appendChild(el);
+    }
+    const css = (customThemes || []).map((def) => {
+      try { return T.themeVarsCSS(T.buildCustomTheme(def)); } catch (e) { return ''; }
+    }).join('\n');
+    if (el.textContent !== css) el.textContent = css;
+  }
+
   // ----- preferences: enabled / theme / features (light-dark MODE is auto, see below) -----
   function applyPrefs(prefs) {
     const html = document.documentElement;
     if (!html) return;
     if (prefs.enabled) html.setAttribute('data-sf-on', ''); else html.removeAttribute('data-sf-on');
-    html.setAttribute('data-sf-theme', prefs.theme || C.DEFAULT_PREFS.theme);
+    // Refresh custom-theme blocks BEFORE selecting one, so the block exists when the attr is set.
+    injectCustomThemes(prefs.customThemes);
+    // Fall back to the default theme if the saved id is unknown (e.g. a custom theme was deleted).
+    const known = new Set((globalThis.SLACKIFY_THEMES ? globalThis.SLACKIFY_THEMES.THEMES : []).map((t) => t.id)
+      .concat((prefs.customThemes || []).map((t) => t.id)));
+    const theme = known.has(prefs.theme) ? prefs.theme : C.DEFAULT_PREFS.theme;
+    html.setAttribute('data-sf-theme', theme);
     for (const f of C.FEATURES) {
       const on = prefs.features && prefs.features[f.id] !== undefined ? prefs.features[f.id] : f.default;
       if (on) html.setAttribute(`data-sf-feat-${f.id}`, ''); else html.removeAttribute(`data-sf-feat-${f.id}`);
@@ -50,6 +78,7 @@
       enabled: saved.enabled !== undefined ? saved.enabled : d.enabled,
       theme: saved.theme || d.theme,
       features: Object.assign({}, d.features, saved.features || {}),
+      customThemes: Array.isArray(saved.customThemes) ? saved.customThemes : [],
     };
   }
 

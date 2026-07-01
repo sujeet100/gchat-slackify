@@ -24,6 +24,29 @@
       <select id="sf-theme" class="sf-select"></select>
     </label>
     <p class="sf-hint">Light/dark follows your Google Chat theme automatically.</p>
+
+    <!-- Custom-theme editor: shown only when a custom theme is selected (see popup.js). -->
+    <div id="sf-custom-editor" class="sf-custom" hidden>
+      <div class="sf-preview" id="sf-preview" aria-hidden="true">
+        <div class="sf-preview-top" id="sf-preview-top"></div>
+        <div class="sf-preview-side" id="sf-preview-side">
+          <span class="sf-preview-active" id="sf-preview-active">Active</span>
+          <span class="sf-preview-text" id="sf-preview-text">A channel</span>
+        </div>
+      </div>
+      <label class="sf-row" for="sf-ct-name">
+        <span class="sf-label">Name</span>
+        <input type="text" id="sf-ct-name" class="sf-select" maxlength="24" placeholder="Custom">
+      </label>
+      <!-- Color controls are built by popup.js (an in-popup 2D picker: saturation/value square + hue
+           strip + hex). We avoid the native <input type="color"> because its OS dialog blurs and closes
+           the MV3 popup (losing the pick). -->
+      <div id="sf-ct-colors"></div>
+      <p class="sf-hint">Your colors are used as-is in both light and dark. Text and hover are derived automatically for readability.</p>
+      <div class="sf-row">
+        <button type="button" id="sf-ct-delete" class="sf-btn-ghost sf-btn-danger">Delete theme</button>
+      </div>
+    </div>
   </section>
 
   <section class="sf-section">

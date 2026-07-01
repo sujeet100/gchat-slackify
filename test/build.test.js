@@ -15,7 +15,7 @@ require(path.join(root, 'src/themes.js'));
 require(path.join(root, 'src/styles.js'));
 
 const C = globalThis.SLACKIFY_CONFIG;
-const { THEMES, MODES } = globalThis.SLACKIFY_THEMES;
+const { THEMES, MODES, buildCustomTheme, themeVarsCSS } = globalThis.SLACKIFY_THEMES;
 const css = globalThis.SLACKIFY_STYLES.buildCSS();
 
 // ---------- themes ----------
@@ -49,6 +49,53 @@ test('derived theme computes a pale light sidebar + dark sidebar from the identi
   // light mode = identity lightened toward white → pale; dark mode = identity darkened → very dark.
   assert.ok(lagoon.modes.light.bg > '#C', `light bg should be pale, got ${lagoon.modes.light.bg}`);
   assert.match(lagoon.modes.dark.bg, /^#0|^#1|^#2/, `dark bg should be very dark, got ${lagoon.modes.dark.bg}`);
+});
+
+// ---------- custom themes ----------
+test('buildCustomTheme applies the three picked colors AS-IS to both modes', () => {
+  const t = buildCustomTheme({ id: 'cst-1', label: 'My Brand', sidebar: '#F0E9F0', accent: '#611F69', topbar: '#3D1042' });
+  assert.strictEqual(t.id, 'cst-1');
+  // Predictable: the user's picks appear unchanged in BOTH light and dark (no mode-swap surprise).
+  for (const mode of ['light', 'dark']) {
+    assert.strictEqual(t.modes[mode].bg, '#F0E9F0', `${mode} sidebar = user pick`);
+    assert.strictEqual(t.modes[mode].active, '#611F69', `${mode} active = user accent`);
+    assert.strictEqual(t.modes[mode].topBg, '#3D1042', `${mode} top bar = user pick`);
+    // every consumed key is populated (no undefined leaks into the CSS)
+    for (const key of ['bg', 'active', 'text', 'activeText', 'topBg', 'topText', 'hoverOverlay', 'presence', 'mention']) {
+      assert.ok(t.modes[mode][key], `${mode}.${key} must be set`);
+    }
+  }
+});
+
+test('buildCustomTheme keeps a DARK picked sidebar dark in light mode (no pale surprise)', () => {
+  // Regression: a dark sidebar picked while Chat is in LIGHT mode must stay dark, not derive pale.
+  const t = buildCustomTheme({ id: 'cst-2', label: 'Night', sidebar: '#1A1B1E', accent: '#3366FF', topbar: '#101012' });
+  assert.strictEqual(t.isDark, true, 'dark sidebar → flagged as a dark theme');
+  assert.strictEqual(t.modes.light.bg, '#1A1B1E', 'dark pick preserved in light mode');
+  assert.strictEqual(t.modes.dark.bg, '#1A1B1E', 'dark pick preserved in dark mode');
+  assert.strictEqual(t.modes.light.text, '#D1D2D3', 'pale readable ink on the dark sidebar');
+});
+
+test('themeVarsCSS renders a scoped var block per mode with no undefined', () => {
+  const t = buildCustomTheme({ id: 'cst-9', label: 'X', sidebar: '#102030', accent: '#3399FF', topbar: '#0A1420' });
+  const out = themeVarsCSS(t);
+  assert.ok(out.includes('[data-sf-theme="cst-9"][data-sf-mode="light"]'), 'light block');
+  assert.ok(out.includes('[data-sf-theme="cst-9"][data-sf-mode="dark"]'), 'dark block');
+  assert.ok(out.includes('--sf-side-bg:') && out.includes('--sf-top-bg:'), 'sidebar + top vars emitted');
+  assert.ok(!out.includes('undefined'), 'no undefined leaked');
+});
+
+test('newCustomTheme mints a CSS-safe, collision-free id', () => {
+  const a = C.newCustomTheme([]);
+  assert.match(a.id, /^cst-\d+$/, 'id is selector-safe');
+  assert.ok(a.sidebar && a.accent && a.topbar, 'seeded with the three anchor colors');
+  const b = C.newCustomTheme([a]);
+  assert.notStrictEqual(b.id, a.id, 'id does not collide with existing');
+});
+
+test('DEFAULT_PREFS carries an empty customThemes list', () => {
+  assert.ok(Array.isArray(C.DEFAULT_PREFS.customThemes), 'customThemes is an array');
+  assert.strictEqual(C.DEFAULT_PREFS.customThemes.length, 0, 'empty by default');
 });
 
 // ---------- config ----------
@@ -86,6 +133,14 @@ test('CSS is generated from config: a block per theme×mode, and a mode block pe
   for (const id of Object.keys(MODES)) {
     assert.ok(css.includes(`[data-sf-mode="${id}"]{`), `missing ${id} mode block`);
   }
+});
+
+test('collapsed-sidebar flyout is backed: the rail c-wiz panel gets the theme background', () => {
+  // Regression: the hover flyout overflows the narrow rail-root box; without painting the rail's
+  // c-wiz panel, the message list bleeds through it. This rule must out-specify the transparent
+  // descendants rule (c-wiz:not([hidden]) beats *:not(img):not(image)).
+  assert.match(css, /\[data-slackify="rail"\] c-wiz:not\(\[hidden\]\)\s*\{[^}]*--sf-side-bg/,
+    'rail c-wiz panel must be painted with --sf-side-bg so the collapsed flyout is backed');
 });
 
 test('every feature is gated behind its data-sf-feat-<id> attribute', () => {

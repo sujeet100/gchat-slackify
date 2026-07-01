@@ -152,5 +152,45 @@
     },
   };
 
-  globalThis.SLACKIFY_THEMES = { THEMES, MODES };
+  // ---- custom themes (user-defined, "a few controls": sidebar + accent + top bar) ----
+  // A custom theme is DATA the user creates in the popup (see config.js DEFAULT_PREFS.customThemes).
+  // It can't be baked into the stylesheet at inject-time like the built-ins, so apply.js renders its
+  // CSS-var block at runtime via themeVarsCSS() below. We ask the user for THREE anchor colors and
+  // DERIVE only the readability-sensitive bits (text ink, active-item text, hover wash) with the same
+  // math as the built-ins — honoring rule #8 ("never guess hex"; contrast is computed, not typed).
+  //
+  // Predictability over cleverness: the user's three colors are applied AS-IS to BOTH appearance
+  // modes. We deliberately do NOT re-derive a different palette per mode — a user who picks a dark
+  // sidebar wants that dark sidebar whether Google Chat is in light or dark mode, not a pale surprise
+  // (that "mode-swap" behavior was confusing: picked colors appeared ignored in the current mode).
+  // The message area still flips light/dark via MODES independently, so content stays readable.
+  /**
+   * @param {SfCustomThemeDef} def user-defined `{ id, label, sidebar, accent, topbar }`
+   * @returns {SfTheme}
+   */
+  const buildCustomTheme = (def) => {
+    const { sidebar, accent, topbar } = def;
+    const sidebarIsLight = luminance(sidebar) > 140;
+    // Slack tints light-sidebar text with the brand hue; a dark sidebar needs a pale readable ink.
+    const m = palette(sidebar, accent, sidebarIsLight ? brandText(accent) : '#D1D2D3');
+    m.topBg = topbar;
+    m.topText = readableInk(topbar);
+    return { id: def.id, label: def.label, isDark: !sidebarIsLight, modes: { light: m, dark: m } };
+  };
+
+  // Render a theme's sidebar/top-bar CSS-var block for BOTH appearance modes. The SINGLE source of
+  // truth for the theme variable syntax — styles.js uses it for the built-ins (baked in), apply.js
+  // uses it for custom themes (injected at runtime). Keep the two in sync by construction.
+  /** @param {SfTheme} t @returns {string} */
+  const themeVarsCSS = (t) => ['light', 'dark'].map((mode) => {
+    const m = t.modes[mode];
+    return `html[data-sf-theme="${t.id}"][data-sf-mode="${mode}"]{` +
+      `--sf-side-bg:${m.bg};--sf-side-active-bg:${m.active};` +
+      `--sf-side-active-text:${m.activeText};--sf-side-text:${m.text};` +
+      `--sf-top-bg:${m.topBg};--sf-top-text:${m.topText};` +
+      `--sf-presence:${m.presence};--sf-mention:${m.mention};` +
+      `--sf-side-hover-overlay:${m.hoverOverlay};}`;
+  }).join('\n');
+
+  globalThis.SLACKIFY_THEMES = { THEMES, MODES, buildCustomTheme, themeVarsCSS };
 })();

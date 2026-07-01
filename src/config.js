@@ -162,6 +162,28 @@
     theme: 'aubergine',     // see themes.js
     mode: 'light',          // 'light' | 'dark'
     features: Object.fromEntries(FEATURES.map((f) => [f.id, f.default])),
+    // User-defined color themes (see themes.js buildCustomTheme). Empty by default; the popup
+    // appends `{ id, label, sidebar, accent, topbar }` entries and apply.js injects their CSS.
+    customThemes: [],
+  };
+
+  // Starter colors for a brand-new custom theme — a pale Slack-aubergine-ish light palette so the
+  // first paint is already coherent and readable (the user then tweaks the three swatches).
+  const CUSTOM_THEME_DEFAULTS = { sidebar: '#F0E9F0', accent: '#611F69', topbar: '#3D1042' };
+
+  // Build a fresh custom-theme definition with a collision-free id. Ids are OURS (never user text),
+  // so they're always CSS-selector-safe (`cst-<n>`) — the label is display-only. Kept here so the
+  // popup and any future importer create identically-shaped entries.
+  /**
+   * @param {SfCustomThemeDef[]} [existing] current custom themes (to pick a non-colliding id/label)
+   * @returns {SfCustomThemeDef}
+   */
+  const newCustomTheme = (existing) => {
+    existing = existing || [];
+    const used = new Set(existing.map((t) => t.id));
+    let n = existing.length + 1, id;
+    do { id = `cst-${n++}`; } while (used.has(id));
+    return { id, label: `Custom ${existing.length + 1}`, ...CUSTOM_THEME_DEFAULTS };
   };
 
   // ---- helpers ----
@@ -175,5 +197,5 @@
     return [];
   };
 
-  globalThis.SLACKIFY_CONFIG = { SELECTORS, TAGS, FEATURES, DEFAULT_PREFS, sel, firstMatchEl, allMatchEls };
+  globalThis.SLACKIFY_CONFIG = { SELECTORS, TAGS, FEATURES, DEFAULT_PREFS, CUSTOM_THEME_DEFAULTS, newCustomTheme, sel, firstMatchEl, allMatchEls };
 })();
