@@ -36,7 +36,7 @@ manifest automatically.
 | Field | Value |
 | --- | --- |
 | **Name** | `Slackify for Google Chat` |
-| **Summary** (≤132 chars) | `Make Google Chat look & feel like Slack — themes, Lato font, light/dark, toggles. 100% cosmetic; nothing leaves your browser.` |
+| **Summary** (≤132 chars) | `Google Chat, styled like Slack — 9 themes + build your own, Lato font, light/dark. 100% cosmetic; nothing leaves your browser.` |
 | **Category** | **Communication** (alt: *Workflow & Planning*) |
 | **Language** | English (United States) |
 
@@ -49,6 +49,8 @@ like Slack — without changing any of Chat's behavior.
 WHAT YOU GET
 • 9 Slack themes — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray,
   and Tritanopia (high contrast)
+• Custom themes — build your own: pick a sidebar, accent, and top-bar color with the built-in
+  color picker; readable text and hover shades are derived for you. Save as many as you like.
 • Light / dark message area that follows your Google Chat appearance setting automatically
 • Slack's Lato font, flat messages (no grey bubbles), full-width left-aligned messages,
   compact density, row hover, highlighted open conversation, #-prefixed spaces, Slack-style
