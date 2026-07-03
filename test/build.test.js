@@ -22,7 +22,7 @@ const css = globalThis.SLACKIFY_STYLES.buildCSS();
 test('THEMES exposes the expected set with both modes', () => {
   const ids = THEMES.map((t) => t.id);
   assert.deepStrictEqual(ids, [
-    'aubergine', 'jade', 'lagoon', 'clementine', 'banana', 'barbra', 'mood-indigo', 'gray', 'tritanopia',
+    'aubergine', 'jade', 'ochin', 'lagoon', 'clementine', 'banana', 'barbra', 'mood-indigo', 'gray', 'tritanopia',
   ]);
   for (const t of THEMES) {
     assert.ok(t.modes.light && t.modes.dark, `${t.id} must define light + dark`);

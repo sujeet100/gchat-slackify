@@ -24,7 +24,7 @@ The popup — pick a theme (light/dark follows your Google Chat setting automati
 
 ## Features
 
-- 🎨 **9 Slack themes** — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast) — **plus build your own** with the in-popup color picker
+- 🎨 **10 Slack themes** — Aubergine, Jade, Ochin, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast) — **plus build your own** with the in-popup color picker
 - 🌗 **Light / dark mode** for the message area (independent of the sidebar theme, exactly like Slack)
 - 🎛️ **Per-feature toggles** — turn any piece on/off from the popup:
   themed sidebar, themed top bar, flat messages, full-width/left-aligned messages, readable line

@@ -6,6 +6,33 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-03
+
+### Added
+- **Ochin theme** (Slack's slate-blue classic), sampled from a live Slack ochin-light client: pale
+  blue sidebar, slate-navy active row, and a PALE window frame with dark ink.
+
+### Changed
+- **All themes recalibrated against live Slack references** (aubergine/jade/ochin screenshots):
+  the shared principles are pale brand-tinted sidebar, ink-blended sidebar text, vivid brand
+  active row, brand-tinted hover wash — plus a per-theme window-frame color (Slack sets frames
+  individually: aubergine dark plum, jade mid-green `#4A9679`, ochin pale blue). The Chat-logo
+  dark-lockup swap is now emitted per theme×mode based on frame luminance, so pale frames
+  (ochin light, pale custom themes) keep the readable native logo.
+- **Conversation title sized like Slack**: 18px Lato Black (GChat's ~22px title read much bigger
+  than Slack's header).
+- **Reaction chips keep GChat's native shape** (deliberate): tag-based reshaping has a re-render
+  window where a fresh chip briefly shows native styling next to restyled ones — that flash of
+  inconsistency is worse than not reshaping. The self-message alignment fixes stay, "Add reaction"
+  still moves after the chips, and chips now re-tag reliably after Wiz re-renders.
+
+### Fixed
+- **Thread links use one blue**: the "N unread" link kept Google's blue while "N replies" got
+  Slack's — both are now tagged and share the same link color.
+- **Thread elbow connector hidden**: Slack's thread affordance has no curved connector line; GChat's
+  is detected by shape (empty, small, bordered rounded corner) and hidden — fail-safe if the
+  structure changes.
+
 ## [1.3.0] — 2026-07-03
 
 ### Added

@@ -56,9 +56,10 @@
   const PRESENCE = '#2BAC76', MENTION = '#CD2553';
 
   // Normalize a palette: fill activeText/presence/mention/hoverOverlay if omitted, and derive the
-  // TOP-BAR colors. In Slack's LIGHT themes the top nav is the DARK, saturated brand (darker than
-  // the pale channel list) with white text — so light-mode topBg = a deep brand shade. In DARK
-  // mode the top nav matches the dark rail. (topBg/topText decouple the bar from the sidebar.)
+  // TOP-BAR colors. Real Slack sets the window-frame color PER THEME (verified against user-provided
+  // client screenshots: aubergine = deep dark plum, jade = a MID-tone green, ochin = a PALE blue),
+  // so a single formula can't reproduce them — `topBg` accepts an explicit override, and the
+  // formula (deep saturated brand in light, the dark rail in dark) stays the default.
   /**
    * @param {string} bg sidebar background
    * @param {string} active active-item / brand color
@@ -66,11 +67,12 @@
    * @param {string} [activeText] text on the active item (defaults to readable ink on `active`)
    * @param {string} [presence] presence-dot color (defaults to the shared green)
    * @param {string} [mention] mention color (defaults to the shared red)
+   * @param {string} [topBgOverride] explicit top-bar/window-frame color (sampled per theme)
    * @returns {SfThemeMode}
    */
-  const palette = (bg, active, text, activeText, presence, mention) => {
+  const palette = (bg, active, text, activeText, presence, mention, topBgOverride) => {
     const lightMode = luminance(bg) > 140;
-    const topBg = lightMode ? darken(active, 0.35) : bg;   // deep saturated brand (light) / dark rail (dark)
+    const topBg = topBgOverride || (lightMode ? darken(active, 0.35) : bg);
     return {
       bg, active, text,
       activeText: activeText || readableInk(active),
@@ -78,7 +80,9 @@
       mention: mention || MENTION,
       hoverOverlay: hoverWash(bg, active),
       topBg,
-      topText: lightMode ? readableInk(topBg) : text,       // white on the dark light-mode bar; rail text in dark
+      // readable ink on whatever the bar color is (white on dark bars, near-black on pale ones);
+      // dark mode keeps the rail text unless the bar was overridden to something else.
+      topText: lightMode || topBgOverride ? readableInk(topBg) : text,
     };
   };
 
@@ -116,8 +120,16 @@
       palette('#F0E9F0', '#611F69', brandText('#611F69'), '#FFFFFF'),
       palette('#241229', '#7D3986', '#D1D2D3')),
     explicitTheme('jade', 'Jade', true,
-      palette('#E8F4F0', '#178F65', brandText('#178F65'), '#FFFFFF'),
+      // frame sampled from the user's live Slack jade-light client (2026-07-03): a MID green
+      // (#4A9679), not the deep darken() default — Slack sets frame colors per theme.
+      palette('#E8F4F0', '#178F65', brandText('#178F65'), '#FFFFFF', undefined, undefined, '#4A9679'),
       palette('#0D241E', '#106F4D', '#D1D2D3')),
+    // Ochin — sampled from the user's live Slack ochin-light client (2026-07-03): pale blue
+    // sidebar, slate-navy active, and a PALE blue window frame (dark ink on it, unlike the dark
+    // frames above). Dark mode derived with the house rules (no dark reference shot).
+    explicitTheme('ochin', 'Ochin', false,
+      palette('#EDF1F9', '#3E5C96', brandText('#3E5C96'), '#FFFFFF', undefined, undefined, '#D9E3F4'),
+      palette('#151D2C', '#4A6DA8', '#D1D2D3')),
     // ---- identity sampled from Slack's picker swatches; per-mode shades derived ----
     derivedTheme('lagoon', 'Lagoon', '#006EA2'),
     derivedTheme('clementine', 'Clementine', '#DB4E03'),
@@ -185,15 +197,26 @@
   // Render a theme's sidebar/top-bar CSS-var block for BOTH appearance modes. The SINGLE source of
   // truth for the theme variable syntax — styles.js uses it for the built-ins (baked in), apply.js
   // uses it for custom themes (injected at runtime). Keep the two in sync by construction.
+  //
+  // Also emits the Chat-logo swap PER theme×mode: on a DARK top bar the native light-mode lockup
+  // (dark wordmark) is unreadable, so we point the <img> at GChat's own dark-theme lockup — but on
+  // a PALE bar (ochin light, pale custom themes) the dark lockup would be the unreadable one, so
+  // the swap is gated on the bar's luminance. Static gstatic asset, no user data (see rule #5 note).
   /** @param {SfTheme} t @returns {string} */
   const themeVarsCSS = (t) => ['light', 'dark'].map((mode) => {
     const m = t.modes[mode];
-    return `html[data-sf-theme="${t.id}"][data-sf-mode="${mode}"]{` +
+    const vars = `html[data-sf-theme="${t.id}"][data-sf-mode="${mode}"]{` +
       `--sf-side-bg:${m.bg};--sf-side-active-bg:${m.active};` +
       `--sf-side-active-text:${m.activeText};--sf-side-text:${m.text};` +
       `--sf-top-bg:${m.topBg};--sf-top-text:${m.topText};` +
       `--sf-presence:${m.presence};--sf-mention:${m.mention};` +
       `--sf-side-hover-overlay:${m.hoverOverlay};}`;
+    const C = globalThis.SLACKIFY_CONFIG;
+    if (!C || luminance(m.topBg) >= 140) return vars;   // pale bar → keep the native logo
+    const logo = C.SELECTORS.chatLogo
+      .map((s) => `html[data-sf-on][data-sf-feat-topbar][data-sf-theme="${t.id}"][data-sf-mode="${mode}"] ${s}`)
+      .join(',\n');
+    return vars + `\n${logo} {\n  content: url("https://ssl.gstatic.com/ui/v1/icons/mail/chatlogo/chat_2026_lockup_dark_2x.png") !important;\n}`;
   }).join('\n');
 
   globalThis.SLACKIFY_THEMES = { THEMES, MODES, buildCustomTheme, themeVarsCSS };

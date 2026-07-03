@@ -81,8 +81,8 @@
     parts.push(mk('typography', SEL.messageTopic, '', { 'line-height': '1.46' }));
     // Conversation header title: it sits OUTSIDE [role="main"] with Google Sans set explicitly,
     // so the pane rule can't reach it — target the tagged title span directly, with Slack's
-    // heavy title weight (Slack renders channel/DM titles in Lato Black).
-    parts.push(mk('typography', [TAG.convoTitle], '', { 'font-family': 'var(--sf-font)', 'font-weight': '900' }));
+    // heavy title weight and ~18px size (GChat's ~22px reads much bigger than Slack's header).
+    parts.push(mk('typography', [TAG.convoTitle], '', { 'font-family': 'var(--sf-font)', 'font-weight': '900', 'font-size': '18px' }));
 
     // ===== SIDEBAR =====
     // Targets the precisely JS-tagged rail ([data-slackify="rail"]) — NO :has() in CSS, so
@@ -136,11 +136,9 @@
     parts.push(mk('topbar', bannerPopups, '', { color: 'var(--sf-search-drop-text)' }));
     parts.push(mk('topbar', bannerPopups, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
     parts.push(mk('topbar', bannerPopups, ' svg', { fill: 'var(--sf-search-drop-text)' }));
-    // Chat logo: on our dark top bar, GChat's light-mode lockup (dark "Chat" wordmark) is unreadable.
-    // Swap it for GChat's OWN dark-theme lockup (a light wordmark) so it stays visible. This points an
-    // existing <img> at a sibling STATIC asset on Google's gstatic CDN (the same CDN the light lockup
-    // already loads from) — a passive image, not fetch/XHR/beacon/code, and carries no user data.
-    parts.push(mk('topbar', SEL.chatLogo, '', { content: 'url("https://ssl.gstatic.com/ui/v1/icons/mail/chatlogo/chat_2026_lockup_dark_2x.png")' }));
+    // Chat logo: swapped to GChat's dark-theme lockup ONLY on themes/modes whose top bar is dark —
+    // emitted per theme×mode by themeVarsCSS (themes.js), so pale bars (ochin light, pale custom
+    // themes) keep the native logo. See themeVarsCSS for the rule.
     // Status chip (Active/Busy pill): GChat gives it a light background that clashes on our dark top
     // bar. Give it the same translucent "dark-theme" treatment as the search box so it blends in —
     // its text is whitened by the [role="banner"] * rule above, and the colored presence dot (a
@@ -242,21 +240,15 @@
     // tinted pill shows (otherwise a white box appears behind the pill).
     parts.push(mk('mentionpills', SEL.userMention, ' *', { color: 'var(--sf-mention-pill-text)', 'background-color': 'transparent' }));
 
-    // ===== REACTION PILLS =====
-    // The chip itself is tagged by tagger.js (data-emoji sits on the inner <img>, so [data-emoji]
-    // alone would round the emoji image, not the pill). Full capsule radius = Slack's reaction chip.
-    parts.push(mk('pills', [TAG.reactionPill], '', { 'border-radius': '999px' }));
-    // "Add reaction" affordance — made CONSISTENT with the count pills (Slack renders both as the
-    // same capsule chip, add-affordance last). GChat's icon button is a radius-50% blob whose grey
-    // state layer can stretch into an ellipse, and on your own messages it sits FIRST in the strip,
-    // reading as a broken first pill. Reshape it into the same capsule (padding brings it to pill
-    // proportions), replace the stretched grey layer with our subtle hover, and CSS-order it after
-    // the pills (visual only — DOM and focus order untouched).
+    // ===== REACTION CHIPS =====
+    // The chips deliberately KEEP GChat's native shape (user decision, 2026-07-03): any tag-based
+    // reshaping has a re-render window where a fresh chip briefly shows native styling next to
+    // restyled ones — that flash of inconsistency is worse than not reshaping at all, and untagged
+    // native chips are consistent BY CONSTRUCTION. The tags (reaction-pill / reactions /
+    // reaction-add) stay: selfslack's alignment counter-rules need them, and the one safe visual
+    // tweak below — ordering "Add reaction" after the chips like Slack (on your own messages GChat
+    // puts it FIRST, where it reads as a broken first chip). CSS order only; DOM/focus untouched.
     parts.push(mk('pills', [TAG.reactionAdd], '', { 'order': '1' }));
-    const addBtn = [`${TAG.reactionAdd} button`, `${TAG.reactionAdd} [role="button"]`];
-    parts.push(mk('pills', addBtn, '', { 'border-radius': '999px', 'background-color': 'transparent', 'padding': '0 8px', 'width': 'auto' }));
-    parts.push(mk('pills', addBtn, ' *', { 'background-color': 'transparent' }));
-    parts.push(mk('pills', addBtn, ':hover', { 'background-color': 'var(--sf-msg-hover)' }));
     // Message hover toolbar — a floating action bar like Slack's. Surface is a MODE var (rule 8):
     // a hard-coded white here left GChat's light dark-mode icons invisible in dark mode.
     parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': 'var(--sf-toolbar-bg)', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
@@ -347,6 +339,8 @@
     }));
     parts.push(mk('threadreplies', [TAG.threadChip], ':hover', { 'background-color': 'var(--sf-msg-hover)', 'box-shadow': 'inset 0 0 0 1px var(--sf-border)' }));
     parts.push(mk('threadreplies', [TAG.replyCount], '', { 'color': 'var(--sf-mention-pill-text)', 'font-weight': '600' }));
+    // Slack's thread affordance has no elbow connector — hide GChat's (tagged by shape in tagger).
+    parts.push(mk('threadreplies', [TAG.threadCurl], '', { 'display': 'none' }));
 
     // ===== "#" PREFIX ON SPACE NAMES (Slack channel style) =====
     // tagger.js tags the sidebar space-name span [data-slackify="spacename"] and the open-space

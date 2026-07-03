@@ -180,39 +180,56 @@
   const threadScanned = new WeakSet();
   function scanThreadReplies(pane) {
     if (!pane) return;
-    const chips = [], counts = [];
+    const chips = [], counts = [], curls = [];
     for (const cont of pane.querySelectorAll('[data-last-reply-time-msec]')) {
       if (threadScanned.has(cont)) continue;
       threadScanned.add(cont);
       for (const sp of cont.querySelectorAll('span')) {
         if (sp.children.length) continue;
-        if (/^\s*\d+\s*repl(y|ies)\s*$/i.test(sp.textContent || '')) {
+        // "N replies" AND "N unread" — both get the reply-count tag so they share ONE link blue
+        // (untagged, "unread" kept Google's slightly different blue — visibly inconsistent).
+        if (/^\s*\d+\s*(repl(y|ies)|unread)\s*$/i.test(sp.textContent || '')) {
           counts.push(sp);
           chips.push(sp.closest('[role="button"]') || cont);
-          break;
+        }
+      }
+      // The curved "elbow" connector beside the reply row (Slack has no connector). Signature:
+      // an EMPTY, small element whose bottom-left corner is rounded and bordered. Fail-safe: if
+      // nothing matches this exact shape, nothing is tagged/hidden. One-time cost per container
+      // (WeakSet above) and only on thread rows, so the style reads here stay bounded.
+      for (const d of cont.querySelectorAll('div, span')) {
+        if (d.children.length || (d.textContent || '').trim() || d.hasAttribute('data-slackify')) continue;
+        const r = d.getBoundingClientRect();
+        if (r.width === 0 || r.width > 48 || r.height > 48) continue;
+        const cs = getComputedStyle(d);
+        if ((parseFloat(cs.borderBottomLeftRadius) || 0) >= 6 &&
+            (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) > 0) {
+          curls.push(d);
         }
       }
     }
     for (const el of chips) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'thread-chip');
     for (const el of counts) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'reply-count');
+    for (const el of curls) el.setAttribute('data-slackify', 'thread-curl');
   }
 
   // ---- reaction pills: tag each reaction count chip + the strip that holds them ----
   // data-emoji sits on the emoji <img>; the visible pill is its [role="button"]/<button> ancestor
   // (verified live) — no durable hook of its own, and CSS can't select an ancestor without :has().
-  // The digit test keeps inline body emojis and the count-less "Add reaction" button out. Runs on
-  // every dirty pass (like scanThreadReplies) so a reaction added AFTER the topic was scanned still
-  // gets tagged; WeakSet-cached per emoji, no getComputedStyle — a pass with nothing new is free.
-  const seenReactionEmojis = new WeakSet();
+  // The digit test keeps the count-less "Add reaction" button out. Runs on every dirty pass (like
+  // scanThreadReplies); no getComputedStyle. Only NULL-pill emojis (inline body emojis) are
+  // WeakSet-cached — chips dedupe via their own data-slackify attribute instead, so a Wiz
+  // re-render that builds a NEW chip around a REUSED emoji <img> still gets re-tagged.
+  const nonPillEmojis = new WeakSet();
   function scanReactionPills(pane) {
     if (!pane) return;
     const pills = [], strips = [];
     for (const em of pane.querySelectorAll('[data-emoji]')) {      // READ (text only)
-      if (seenReactionEmojis.has(em)) continue;
-      seenReactionEmojis.add(em);
+      if (nonPillEmojis.has(em)) continue;
       const pill = em.closest('button, [role="button"]');
-      if (!pill || pill.hasAttribute('data-slackify')) continue;
-      if (!/\d/.test(pill.textContent || '')) continue;            // a count chip, not "Add reaction"
+      if (!pill) { nonPillEmojis.add(em); continue; }              // inline body emoji — never a chip
+      if (pill.hasAttribute('data-slackify')) continue;
+      if (!/\d/.test(pill.textContent || '')) continue;            // "Add reaction" (count may appear later — don't cache)
       pills.push(pill);
       // the strip = the flex row of all chips, two levels up (pill sits in a per-chip wrapper div)
       const strip = pill.parentElement && pill.parentElement.parentElement;

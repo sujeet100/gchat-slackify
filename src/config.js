@@ -137,6 +137,9 @@
     spaceHeader: '[data-slackify="convo-title"][data-sf-space]',
     threadChip:  '[data-slackify="thread-chip"]',
     replyCount:  '[data-slackify="reply-count"]',
+    // GChat's curved "elbow" connector beside the thread reply row — Slack has no connector, so
+    // the threadreplies feature hides it (tagger detects it by shape; fail-safe if not found).
+    threadCurl:  '[data-slackify="thread-curl"]',
     // A reaction count chip (the [role="button"] ancestor of an [data-emoji] img with a count) and
     // the strip that holds all of a message's chips. data-emoji sits on the emoji <img> itself, so
     // CSS can't reach the pill without :has() — tagger.js walks up and tags both instead.
