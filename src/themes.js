@@ -124,14 +124,10 @@
       // (#4A9679), not the deep darken() default — Slack sets frame colors per theme.
       palette('#E8F4F0', '#178F65', brandText('#178F65'), '#FFFFFF', undefined, undefined, '#4A9679'),
       palette('#0D241E', '#106F4D', '#D1D2D3')),
-    // Ochin — sampled from the user's live Slack ochin-light client (2026-07-03): pale blue
-    // sidebar, slate-navy active, and a LIGHT periwinkle window frame (dark ink on it, unlike the
-    // dark frames above). The frame is deepened a step from the raw sample (#D9E3F4 → #C9D8F0):
-    // Slack's frame is a thin strip, but GChat's banner is a tall 64px bar where the raw pale
-    // sample read washed-out/unthemed (user-confirmed). Dark mode derived (no dark reference).
-    explicitTheme('ochin', 'Ochin', false,
-      palette('#EDF1F9', '#3E5C96', brandText('#3E5C96'), '#FFFFFF', undefined, undefined, '#C9D8F0'),
-      palette('#151D2C', '#4A6DA8', '#D1D2D3')),
+    // (An Ochin port was tried 2026-07-03 and REMOVED at the user's call — its pale window frame
+    // never looked right on GChat's tall banner. If revisiting: sidebar #EDF1F9, active #3E5C96,
+    // frame samples #D9E3F4/#C9D8F0 both rejected. apply.js falls back to the default theme for
+    // anyone who had selected it.)
     // ---- identity sampled from Slack's picker swatches; per-mode shades derived ----
     derivedTheme('lagoon', 'Lagoon', '#006EA2'),
     derivedTheme('clementine', 'Clementine', '#DB4E03'),

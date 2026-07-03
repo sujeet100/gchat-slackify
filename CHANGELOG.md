@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-07-03
+
+### Removed
+- The Ochin theme (added in 1.4.0): its pale window frame never looked right on Google Chat's tall
+  banner. Anyone who had selected it falls back to the default theme automatically.
+
+### Fixed
+- The compose box could collapse to icon-width and grow as you type on some of Google's A/B Chat
+  shell variants (seen on Chrome 149 with the "Apps" bottom bar): if the composer's centering
+  wrapper is a COLUMN flexbox, `flex: 1 1 auto` is inert on the cross axis and `width: auto`
+  shrinks to content. The composer now also stretches (`align-items`/`align-self: stretch`), which
+  fills the width in both wrapper orientations.
+
 ## [1.4.1] — 2026-07-03
 
 ### Fixed

@@ -176,8 +176,14 @@
     parts.push(mk('fullwidth', [TAG.msgWide], '', { 'max-width': 'none' }));
     // Left-align + widen the composer to match the full-width messages (it's centered by default).
     // tagger tags the composer's centering wrapper as [data-slackify="composer-wrap"].
-    parts.push(mk('fullwidth', [TAG.composerWrap], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'justify-content': 'flex-start' }));
-    parts.push(mk('fullwidth', [TAG.composer], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'margin-left': '16px', 'margin-right': '16px' }));
+    // The composer must fill the row in EVERY Chat shell variant. Google A/B-serves layouts where
+    // the centering wrapper is a COLUMN flexbox (seen on a user's Chrome 149 with the "Apps"
+    // bottom bar): there `flex: 1 1 auto` is inert on the cross axis and `width: auto` collapses
+    // the box to content width — icons only, growing as you type. `align-items/align-self:
+    // stretch` covers the column case; `flex: 1 1 auto` covers the row case (where stretch merely
+    // re-affirms the natural height).
+    parts.push(mk('fullwidth', [TAG.composerWrap], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'justify-content': 'flex-start', 'align-items': 'stretch' }));
+    parts.push(mk('fullwidth', [TAG.composer], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'align-self': 'stretch', 'margin-left': '16px', 'margin-right': '16px' }));
     // ===== READABLE LINE WIDTH (opt-in cap on very wide windows) =====
     // Full-width messages go edge-to-edge, which on a 27" display gives ~250-char lines. This caps
     // the topic and the composer at ~1000px, still left-aligned. 968px = 1000 minus the composer's
