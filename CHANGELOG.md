@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-07-03
+
+### Fixed
+- Ochin's top bar deepened to a clearly-blue periwinkle (`#D9E3F4` → `#C9D8F0`): the raw Slack
+  sample is a thin frame strip, but on GChat's tall 64px banner it read washed-out/unthemed.
+
 ## [1.4.0] — 2026-07-03
 
 ### Added
