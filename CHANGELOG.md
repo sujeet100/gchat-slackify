@@ -6,6 +6,42 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-03
+
+### Added
+- **Slack keyboard shortcuts** (opt-in, default OFF): Cmd/Ctrl+K focuses search (the quick-switcher
+  muscle memory), Cmd/Ctrl+Shift+K starts a new chat. Additive only — it never overrides Chat's own
+  shortcuts, and leaves the keystroke alone if its target element is missing.
+- **Readable line width** (opt-in): caps messages and the compose box at ~1000px on wide windows,
+  instead of edge-to-edge lines.
+- The popup now groups the 25 toggles into titled sections (Theme & typography / Messages / Message
+  details / Sidebar & Home / Keyboard shortcuts) and is wider (400px), so it scans much faster.
+
+### Fixed
+- Reaction chips on your own messages rendered broken (emoji pushed into the top-left corner,
+  count misaligned, chip shrunken): the `selfslack` blanket alignment reset also hit the chips'
+  centered flexboxes. The tagger now tags each reaction chip (`reaction-pill`) and its strip
+  (`reactions`), and higher-specificity rules restore their native alignment.
+- "Reaction pills" now actually rounds the reaction chip. `[data-emoji]` sits on the emoji `<img>`,
+  so the old rule rounded the invisible image, not the pill; the chip is now capsule-shaped
+  (Slack-style) via the new tag.
+- Composer still showed Google's blue input pill inside the Slack-style box: the pill wash is
+  painted by a full-size `::before` (and can live on a sibling overlay of the textbox, which the
+  ancestor walk missed). Both are now flattened.
+- Message hover toolbar was hard-coded white, leaving GChat's light dark-mode icons invisible on it
+  in dark mode; its surface is now a per-mode variable (`--sf-toolbar-bg`).
+
+## [1.1.0] — 2026-07-01
+
+### Added
+- **Custom themes**: create/name/delete your own themes from three anchor colors (sidebar /
+  accent / top bar) with an in-popup 2D color picker; derived text/hover/ink use the same math
+  as the built-in themes. Colors apply as-is in both light and dark modes.
+
+### Fixed
+- Search box text was invisible (white-on-white) in light mode.
+- The collapsed sidebar's hover flyout was transparent, letting the message list bleed through.
+
 ## [1.0.0] — 2026-06-29
 
 First public release — ready for the Chrome Web Store.

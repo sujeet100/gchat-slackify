@@ -117,35 +117,52 @@
     sel.appendChild(add);
   }
 
+  /** One toggle row for a feature. @param {SfFeature} f @returns {HTMLElement} */
+  function featureRow(f) {
+    const row = document.createElement('div');
+    row.className = 'sf-feat';
+    const text = document.createElement('div');
+    text.className = 'sf-feat-text';
+    const name = document.createElement('span');
+    name.className = 'sf-feat-name'; name.textContent = f.label;
+    const desc = document.createElement('span');
+    desc.className = 'sf-feat-desc'; desc.textContent = f.desc;
+    text.appendChild(name); text.appendChild(desc);
+
+    const sw = document.createElement('label');
+    sw.className = 'sf-switch';
+    const input = document.createElement('input');
+    input.type = 'checkbox'; input.dataset.feat = f.id;
+    const slider = document.createElement('span');
+    slider.className = 'sf-slider';
+    sw.appendChild(input); sw.appendChild(slider);
+
+    input.addEventListener('change', () => {
+      prefs.features[f.id] = input.checked;
+      save();
+    });
+
+    row.appendChild(text); row.appendChild(sw);
+    return row;
+  }
+
+  // Render features grouped into titled sections (config.js FEATURE_GROUPS drives order + labels).
+  // A safety net renders any feature with an unknown/missing group at the end, so a config typo
+  // can never silently drop a toggle from the UI.
   function buildFeatureRows() {
     const wrap = $('sf-features');
     wrap.innerHTML = '';
-    for (const f of C.FEATURES) {
-      const row = document.createElement('div');
-      row.className = 'sf-feat';
-      const text = document.createElement('div');
-      text.className = 'sf-feat-text';
-      const name = document.createElement('span');
-      name.className = 'sf-feat-name'; name.textContent = f.label;
-      const desc = document.createElement('span');
-      desc.className = 'sf-feat-desc'; desc.textContent = f.desc;
-      text.appendChild(name); text.appendChild(desc);
-
-      const sw = document.createElement('label');
-      sw.className = 'sf-switch';
-      const input = document.createElement('input');
-      input.type = 'checkbox'; input.dataset.feat = f.id;
-      const slider = document.createElement('span');
-      slider.className = 'sf-slider';
-      sw.appendChild(input); sw.appendChild(slider);
-
-      input.addEventListener('change', () => {
-        prefs.features[f.id] = input.checked;
-        save();
-      });
-
-      row.appendChild(text); row.appendChild(sw);
-      wrap.appendChild(row);
+    const groups = C.FEATURE_GROUPS || [];
+    const known = new Set(groups.map((g) => g.id));
+    const grouped = groups.map((g) => ({ g, feats: C.FEATURES.filter((f) => f.group === g.id) }))
+      .concat([{ g: null, feats: C.FEATURES.filter((f) => !known.has(f.group)) }]);
+    for (const { g, feats } of grouped) {
+      if (!feats.length) continue;
+      const title = document.createElement('div');
+      title.className = 'sf-group-title';
+      title.textContent = g ? g.label : 'Other';
+      wrap.appendChild(title);
+      for (const f of feats) wrap.appendChild(featureRow(f));
     }
   }
 

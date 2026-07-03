@@ -141,6 +141,7 @@
       searchDropBg: '#FFFFFF', searchDropText: '#1D1C1D',
       mentionPillBg: '#E8F2FC', mentionPillText: '#1264A3',
       codeText: '#E01E5A',   // Slack inline-code crimson (light)
+      toolbarBg: '#FFFFFF',  // hover-toolbar surface (matches Slack's floating action bar)
     },
     dark: {
       contentText: '#D1D2D3', msgHover: 'rgba(255,255,255,0.06)',
@@ -149,6 +150,7 @@
       searchDropBg: '#1D1C1D', searchDropText: '#D1D2D3',
       mentionPillBg: 'rgba(120,170,255,0.16)', mentionPillText: '#A8C7FA',
       codeText: '#E8912D',   // Slack inline-code orange (dark)
+      toolbarBg: '#26282C',  // dark elevated surface — GChat's dark icons stay visible on it
     },
   };
 

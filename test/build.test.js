@@ -144,8 +144,19 @@ test('collapsed-sidebar flyout is backed: the rail c-wiz panel gets the theme ba
 });
 
 test('every feature is gated behind its data-sf-feat-<id> attribute', () => {
+  // JS-only features (no CSS surface) gate themselves on the same html attribute at runtime
+  // instead of via a stylesheet rule — shortcuts.js checks it per keystroke.
+  const JS_ONLY = new Set(['shortcuts']);
   for (const f of C.FEATURES) {
+    if (JS_ONLY.has(f.id)) continue;
     assert.ok(css.includes(`data-sf-feat-${f.id}`), `feature ${f.id} has no gated rule in the stylesheet`);
+  }
+});
+
+test('every feature belongs to a declared popup group', () => {
+  const groups = new Set(C.FEATURE_GROUPS.map((g) => g.id));
+  for (const f of C.FEATURES) {
+    assert.ok(groups.has(f.group), `feature ${f.id} has unknown group "${f.group}"`);
   }
 });
 

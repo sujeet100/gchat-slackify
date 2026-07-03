@@ -120,6 +120,11 @@
     spaceHeader: '[data-slackify="space-header"]',
     threadChip:  '[data-slackify="thread-chip"]',
     replyCount:  '[data-slackify="reply-count"]',
+    // A reaction count chip (the [role="button"] ancestor of an [data-emoji] img with a count) and
+    // the strip that holds all of a message's chips. data-emoji sits on the emoji <img> itself, so
+    // CSS can't reach the pill without :has() — tagger.js walks up and tags both instead.
+    reactionPill:'[data-slackify="reaction-pill"]',
+    reactions:   '[data-slackify="reactions"]',
     // The per-message column GChat right-aligns for YOUR own messages (highest flex-end ancestor of
     // a colored self-bubble). tagger.js tags it so the "Slack-style own messages" feature can flip
     // it to the left column and drop your avatar into the gutter.
@@ -129,31 +134,45 @@
     selfMeta:    '[data-slackify="self-meta"]',
   };
 
+  // Popup sections, in display order. Every feature carries a `group` id from this list; the popup
+  // renders one titled block per group (a flat 20+ toggle list was unscannable).
+  const FEATURE_GROUPS = [
+    { id: 'theme',     label: 'Theme & typography' },
+    { id: 'messages',  label: 'Messages' },
+    { id: 'details',   label: 'Message details' },
+    { id: 'nav',       label: 'Sidebar & Home' },
+    { id: 'shortcuts', label: 'Keyboard shortcuts' },
+  ];
+
   // Independently toggleable features. attr = html[data-sf-feat-<id>].
   const FEATURES = [
-    { id: 'typography',   label: 'Slack font (Lato)',       default: true,  desc: 'Use Slack’s Lato typeface and line spacing' },
-    { id: 'sidebar',      label: 'Themed sidebar',          default: true,  desc: 'Color the left rail with the Slack theme' },
-    { id: 'topbar',       label: 'Themed top bar',          default: true,  desc: 'Match the top bar to the theme' },
-    { id: 'flatten',      label: 'Flat messages',           default: true,  desc: 'Remove Google’s grey chat bubbles' },
-    { id: 'fullwidth',    label: 'Full-width messages',     default: true,  desc: 'Left-align messages like Slack (remove the centered column)' },
-    { id: 'density',      label: 'Compact density',         default: true,  desc: 'Tighter spacing between messages' },
-    { id: 'rowhover',     label: 'Row hover highlight',     default: true,  desc: 'Slack-style hover on rows and messages' },
-    { id: 'activeconv',   label: 'Highlight open chat',     default: true,  desc: 'Accent the currently open conversation' },
-    { id: 'unreadbold',   label: 'Bold unread',             default: true,  desc: 'Embolden unread conversations' },
-    { id: 'spacehash',    label: '“#” on space names',       default: true,  desc: 'Prefix space/channel names with a “#” in the sidebar, like Slack channels' },
-    { id: 'datedividers', label: 'Date dividers',           default: true,  desc: 'Slack-style date separators with a divider line' },
-    { id: 'pills',        label: 'Reaction pills',          default: true,  desc: 'Rounded reaction chips' },
-    { id: 'avatarshape',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
-    { id: 'sendername',   label: 'Prominent sender names',   default: true,  desc: 'Show message sender names bold and slightly larger, like Slack' },
-    { id: 'msgalign',     label: 'Slack message layout',     default: true,  desc: 'Top-align the avatar with the sender name and enlarge it, like Slack' },
-    { id: 'threadreplies',label: 'Slack-style thread replies',default: true,  desc: 'Show the “N replies” thread affordance as a Slack-style link chip' },
-    { id: 'codestyle',    label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },
-    { id: 'mentionpills', label: 'Mention pills',           default: true,  desc: 'Show @mentions as Slack-style rounded chips with a tinted background' },
-    { id: 'composer',     label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
-    { id: 'selfslack',    label: 'Slack-style own messages', default: true, desc: 'Show your own messages left-aligned in the main column with your avatar, like Slack (instead of right-aligned bubbles). Pairs with “Flat messages” to drop the blue bubble.' },
-    { id: 'unreadswitch', label: 'Visible “Unread” switch',  default: true,  desc: 'Give the Home “Unread” filter a clear themed color when it is ON (GChat’s default ON state is nearly invisible)' },
-    { id: 'hidemeetings', label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
-    { id: 'dimmeetings',  label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },
+    { id: 'typography',   group: 'theme',    label: 'Slack font (Lato)',       default: true,  desc: 'Use Slack’s Lato typeface and line spacing' },
+    { id: 'sidebar',      group: 'theme',    label: 'Themed sidebar',          default: true,  desc: 'Color the left rail with the Slack theme' },
+    { id: 'topbar',       group: 'theme',    label: 'Themed top bar',          default: true,  desc: 'Match the top bar to the theme' },
+    { id: 'flatten',      group: 'messages', label: 'Flat messages',           default: true,  desc: 'Remove Google’s grey chat bubbles' },
+    { id: 'fullwidth',    group: 'messages', label: 'Full-width messages',     default: true,  desc: 'Left-align messages like Slack (remove the centered column)' },
+    { id: 'readablewidth',group: 'messages', label: 'Readable line width',     default: false, desc: 'Cap messages and the compose box at a comfortable reading width (~1000px) on wide windows' },
+    { id: 'density',      group: 'messages', label: 'Compact density',         default: true,  desc: 'Tighter spacing between messages' },
+    { id: 'rowhover',     group: 'messages', label: 'Row hover highlight',     default: true,  desc: 'Slack-style hover on rows and messages' },
+    { id: 'msgalign',     group: 'messages', label: 'Slack message layout',     default: true,  desc: 'Top-align the avatar with the sender name and enlarge it, like Slack' },
+    { id: 'sendername',   group: 'messages', label: 'Prominent sender names',   default: true,  desc: 'Show message sender names bold and slightly larger, like Slack' },
+    { id: 'selfslack',    group: 'messages', label: 'Slack-style own messages', default: true, desc: 'Show your own messages left-aligned in the main column with your avatar, like Slack (instead of right-aligned bubbles). Pairs with “Flat messages” to drop the blue bubble.' },
+    { id: 'composer',     group: 'messages', label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
+    { id: 'datedividers', group: 'details',  label: 'Date dividers',           default: true,  desc: 'Slack-style date separators with a divider line' },
+    { id: 'pills',        group: 'details',  label: 'Reaction pills',          default: true,  desc: 'Rounded reaction chips' },
+    { id: 'avatarshape',  group: 'details',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
+    { id: 'threadreplies',group: 'details',  label: 'Slack-style thread replies',default: true,  desc: 'Show the “N replies” thread affordance as a Slack-style link chip' },
+    { id: 'codestyle',    group: 'details',  label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },
+    { id: 'mentionpills', group: 'details',  label: 'Mention pills',           default: true,  desc: 'Show @mentions as Slack-style rounded chips with a tinted background' },
+    { id: 'activeconv',   group: 'nav',      label: 'Highlight open chat',     default: true,  desc: 'Accent the currently open conversation' },
+    { id: 'unreadbold',   group: 'nav',      label: 'Bold unread',             default: true,  desc: 'Embolden unread conversations' },
+    { id: 'spacehash',    group: 'nav',      label: '“#” on space names',       default: true,  desc: 'Prefix space/channel names with a “#” in the sidebar, like Slack channels' },
+    { id: 'unreadswitch', group: 'nav',      label: 'Visible “Unread” switch',  default: true,  desc: 'Give the Home “Unread” filter a clear themed color when it is ON (GChat’s default ON state is nearly invisible)' },
+    { id: 'hidemeetings', group: 'nav',      label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
+    { id: 'dimmeetings',  group: 'nav',      label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },
+    // The one deliberate exception to "purely cosmetic": ADDS shortcuts (never overrides Chat's own),
+    // handled by src/shortcuts.js, which no-ops entirely unless this feature attribute is on.
+    { id: 'shortcuts',    group: 'shortcuts',label: 'Slack shortcuts (⌘K, ⌘⇧K)', default: false, desc: 'Cmd/Ctrl+K focuses search; Cmd/Ctrl+Shift+K starts a new chat (Ctrl on Windows/Linux)' },
   ];
 
   /** @type {SfPrefs} */
@@ -197,5 +216,5 @@
     return [];
   };
 
-  globalThis.SLACKIFY_CONFIG = { SELECTORS, TAGS, FEATURES, DEFAULT_PREFS, CUSTOM_THEME_DEFAULTS, newCustomTheme, sel, firstMatchEl, allMatchEls };
+  globalThis.SLACKIFY_CONFIG = { SELECTORS, TAGS, FEATURES, FEATURE_GROUPS, DEFAULT_PREFS, CUSTOM_THEME_DEFAULTS, newCustomTheme, sel, firstMatchEl, allMatchEls };
 })();

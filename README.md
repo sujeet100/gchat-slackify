@@ -24,17 +24,20 @@ The popup — pick a theme (light/dark follows your Google Chat setting automati
 
 ## Features
 
-- 🎨 **9 Slack themes** — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast)
+- 🎨 **9 Slack themes** — Aubergine, Jade, Lagoon, Clementine, Banana, Barbra, Mood Indigo, Gray, Tritanopia (high contrast) — **plus build your own** with the in-popup color picker
 - 🌗 **Light / dark mode** for the message area (independent of the sidebar theme, exactly like Slack)
 - 🎛️ **Per-feature toggles** — turn any piece on/off from the popup:
-  themed sidebar, themed top bar, flat messages, full-width/left-aligned messages, compact
-  density, row hover, active-conversation highlight, bold unread, Slack-style date dividers,
-  reaction pills
+  themed sidebar, themed top bar, flat messages, full-width/left-aligned messages, readable line
+  width, compact density, row hover, active-conversation highlight, bold unread, Slack-style date
+  dividers, reaction pills
+- ⌨️ **Optional Slack shortcuts** (off by default) — `Cmd/Ctrl+K` focuses search, `Cmd/Ctrl+Shift+K`
+  starts a new chat
 - 🍆 Aubergine sidebar & top bar, Slack-blue active conversation, flattened message bubbles,
   Slack-style date pills on a divider line
 
-It does **not** change threading, search, notifications, shortcuts, or huddles — only the visual
-layer. A skin can deliver Slack's *look*, not its *workflow*; that's intentional and honest.
+It does **not** change threading, search, notifications, or huddles — only the visual layer
+(the opt-in shortcuts above are additive and never override Chat's own). A skin can deliver
+Slack's *look*, not its *workflow*; that's intentional and honest.
 
 ## Why this one won't rot like the others
 

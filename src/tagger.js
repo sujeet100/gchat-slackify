@@ -155,6 +155,31 @@
     for (const el of counts) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'reply-count');
   }
 
+  // ---- reaction pills: tag each reaction count chip + the strip that holds them ----
+  // data-emoji sits on the emoji <img>; the visible pill is its [role="button"]/<button> ancestor
+  // (verified live) — no durable hook of its own, and CSS can't select an ancestor without :has().
+  // The digit test keeps inline body emojis and the count-less "Add reaction" button out. Runs on
+  // every dirty pass (like scanThreadReplies) so a reaction added AFTER the topic was scanned still
+  // gets tagged; WeakSet-cached per emoji, no getComputedStyle — a pass with nothing new is free.
+  const seenReactionEmojis = new WeakSet();
+  function scanReactionPills(pane) {
+    if (!pane) return;
+    const pills = [], strips = [];
+    for (const em of pane.querySelectorAll('[data-emoji]')) {      // READ (text only)
+      if (seenReactionEmojis.has(em)) continue;
+      seenReactionEmojis.add(em);
+      const pill = em.closest('button, [role="button"]');
+      if (!pill || pill.hasAttribute('data-slackify')) continue;
+      if (!/\d/.test(pill.textContent || '')) continue;            // a count chip, not "Add reaction"
+      pills.push(pill);
+      // the strip = the flex row of all chips, two levels up (pill sits in a per-chip wrapper div)
+      const strip = pill.parentElement && pill.parentElement.parentElement;
+      if (strip && !strip.hasAttribute('data-slackify')) strips.push(strip);
+    }
+    for (const el of pills) el.setAttribute('data-slackify', 'reaction-pill');   // WRITE
+    for (const el of strips) el.setAttribute('data-slackify', 'reactions');
+  }
+
   // ---- status chip: first button in the topbar with a visible (non-transparent) background ----
   // The "Active/Busy/DND" pill is the only button in [role="banner"] with its own background.
   // Tagged once; our topbar CSS would otherwise make its text white-on-white (unreadable).
@@ -198,6 +223,20 @@
         // tag the centering wrapper so the full-width feature can left-align + widen the box to
         // match the (full-width) messages instead of leaving it centered.
         if (el.parentElement) el.parentElement.setAttribute('data-slackify', 'composer-wrap');
+        // The pill's visible surface can also be a SIBLING overlay of the textbox (an opaque
+        // rounded layer spanning the box — verified live), which the ancestor walk above never
+        // visits. Sweep the card's subtree ONCE (only when the composer was just [re]tagged) for
+        // wide/short/rounded/opaque layers and flatten them too; cheap rect filters run first so
+        // getComputedStyle only touches a handful of candidates.
+        const compW = el.getBoundingClientRect().width;
+        for (const d of el.querySelectorAll('div:not([data-slackify])')) {
+          const r = d.getBoundingClientRect();
+          if (r.width < compW * 0.6 || r.height > 120 || r.height < 20) continue;
+          const dcs = getComputedStyle(d);
+          if ((parseFloat(dcs.borderTopLeftRadius) || 0) < 16) continue;
+          const dm = dcs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+          if (dm && (dm[4] === undefined || +dm[4] > 0.5)) d.setAttribute('data-slackify', 'composer-pill');
+        }
         return;
       }
       el = el.parentElement;
@@ -436,7 +475,7 @@
       try { scanAvatars(rail); } catch (e) {}
       try { scanSpaceNames(rail); } catch (e) {}
       try { if (pane) tagStream(pane); } catch (e) {}
-      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
+      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { scanReactionPills(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
     }
     const hasTime = () => !deadline || typeof deadline.timeRemaining !== 'function' || deadline.timeRemaining() > 3;
     for (const t of topicQueue) {

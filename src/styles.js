@@ -62,7 +62,7 @@
         `--sf-date-line:${m.dateLine};--sf-code-bg:${m.codeBg};--sf-code-border:${m.codeBorder};` +
         `--sf-search-drop-bg:${m.searchDropBg};--sf-search-drop-text:${m.searchDropText};` +
         `--sf-mention-pill-bg:${m.mentionPillBg};--sf-mention-pill-text:${m.mentionPillText};` +
-        `--sf-code-text:${m.codeText};}`
+        `--sf-code-text:${m.codeText};--sf-toolbar-bg:${m.toolbarBg};}`
       );
     }
 
@@ -167,6 +167,13 @@
     // tagger tags the composer's centering wrapper as [data-slackify="composer-wrap"].
     parts.push(mk('fullwidth', [TAG.composerWrap], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'justify-content': 'flex-start' }));
     parts.push(mk('fullwidth', [TAG.composer], '', { 'max-width': 'none', 'width': 'auto', 'flex': '1 1 auto', 'margin-left': '16px', 'margin-right': '16px' }));
+    // ===== READABLE LINE WIDTH (opt-in cap on very wide windows) =====
+    // Full-width messages go edge-to-edge, which on a 27" display gives ~250-char lines. This caps
+    // the topic and the composer at ~1000px, still left-aligned. 968px = 1000 minus the composer's
+    // 16px side margins, so the composer's right edge lines up with the capped message text.
+    parts.push(mk('readablewidth', SEL.messageTopic, '', { 'max-width': '1000px' }));
+    parts.push(mk('readablewidth', [TAG.composer], '', { 'max-width': '968px' }));
+
     parts.push(mk('rowhover', SEL.messageTopic, ':hover', { 'background-color': 'var(--sf-msg-hover)' }));
     // Kill GChat's grey hover/active fill on the message containers (incl. when the reaction/action
     // toolbar appears) so only our subtle Slack-style row hover shows. Scoped to [role=main].
@@ -178,6 +185,9 @@
     // composer reads as ONE clean bordered box rather than a rounded pill sitting inside a box.
     parts.push(mk('composer', [TAG.composer], '', { 'border-radius': '8px', 'border': '1px solid var(--sf-border)' }));
     parts.push(mk('composer', [TAG.composerPill], '', { 'border-radius': '8px', 'background-color': 'transparent' }));
+    // GChat also paints the pill via a full-size ::before wash (Google blue at low opacity, verified
+    // live) — clearing the element's own background leaves that pseudo tinting the box. Remove it.
+    parts.push(mk('composer', [TAG.composerPill], '::before', { 'display': 'none' }));
     // Neutralize GChat's blue fills inside the box (the blue "+" button and the send button) so the
     // white card shows through — a clean Slack composer. Scope to the BUTTONS only (plus the input
     // pill, handled above) — NOT all descendants — so menus/popups rendered inside the composer keep
@@ -207,9 +217,12 @@
     parts.push(mk('mentionpills', SEL.userMention, ' *', { color: 'var(--sf-mention-pill-text)', 'background-color': 'transparent' }));
 
     // ===== REACTION PILLS =====
-    parts.push(mk('pills', SEL.reaction, '', { 'border-radius': '12px' }));
-    // Message hover toolbar — set white background so the reaction shortcuts match Slack's style.
-    parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': '#ffffff', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
+    // The chip itself is tagged by tagger.js (data-emoji sits on the inner <img>, so [data-emoji]
+    // alone would round the emoji image, not the pill). Full capsule radius = Slack's reaction chip.
+    parts.push(mk('pills', [TAG.reactionPill], '', { 'border-radius': '999px' }));
+    // Message hover toolbar — a floating action bar like Slack's. Surface is a MODE var (rule 8):
+    // a hard-coded white here left GChat's light dark-mode icons invisible in dark mode.
+    parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': 'var(--sf-toolbar-bg)', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
 
     // ===== SQUARE AVATARS (Slack uses ~3px radius instead of 50% circles) =====
     // tagger.js detects the circular wrapper div (border-radius >= 12px on img parent) and stamps
@@ -254,6 +267,13 @@
     // Undo the nested right-push on descendants so the content sits at the left. The inner flex-end
     // levels are content-width no-ops today, but resetting them future-proofs deeper/altered trees.
     parts.push(mk('selfslack', selfRow, ' *', { 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
+    // …but that blanket reset wrecks the reaction chips, which are small CENTERED flexboxes
+    // (emoji + count get pushed to the top-left corner and the chip stops stretching). Restore
+    // native alignment inside the tagged reactions strip — these selectors carry one more
+    // attribute than the `selfRow *` reset above, so they win the specificity race.
+    const selfReactions = inMain(`${TAG.selfRow} ${TAG.reactions}`);
+    parts.push(mk('selfslack', selfReactions, ' *', { 'align-self': 'auto' }));
+    parts.push(mk('selfslack', selfReactions.flatMap((s) => [`${s} button`, `${s} [role="button"]`]), '', { 'justify-content': 'center' }));
     // The avatar tile in the gutter — squared (Slack style, matches 'avatarshape'); a neutral
     // placeholder shows until tagger.js sets --sf-self-avatar from the account button.
     parts.push(mk('selfslack', selfRow, '::before', {

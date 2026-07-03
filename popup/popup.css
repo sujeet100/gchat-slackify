@@ -4,7 +4,8 @@
 }
 * { box-sizing: border-box; }
 body {
-  width: 320px; margin: 0; background: var(--bg); color: var(--fg);
+  /* 400px (Chrome allows up to 800): descriptions fit on one line and the list scans faster */
+  width: 400px; margin: 0; background: var(--bg); color: var(--fg);
   font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 .sf-head {
@@ -31,6 +32,11 @@ body {
 .sf-seg-btn[aria-pressed="true"] { background: var(--accent-on); color: #fff; }
 
 /* feature rows */
+.sf-group-title {
+  font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 14px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line);
+}
+.sf-group-title:first-child { margin-top: 0; }
 .sf-feat { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 7px 0; }
 .sf-feat-text { display: flex; flex-direction: column; }
 .sf-feat-name { font-weight: 600; }

@@ -28,9 +28,16 @@ interface SfPrefs {
 /** An independently toggleable feature (drives `html[data-sf-feat-<id>]` + the popup). */
 interface SfFeature {
   id: string;
+  group: string;   // popup section id — one of FEATURE_GROUPS
   label: string;
   default: boolean;
   desc: string;
+}
+
+/** A popup section grouping related features (display order = array order). */
+interface SfFeatureGroup {
+  id: string;
+  label: string;
 }
 
 /** config.js — the single source of truth for selectors, features, defaults, and helpers. */
@@ -38,6 +45,7 @@ interface SfConfig {
   SELECTORS: Record<string, string[]>;
   TAGS: Record<string, string>;
   FEATURES: SfFeature[];
+  FEATURE_GROUPS: SfFeatureGroup[];
   DEFAULT_PREFS: SfPrefs;
   CUSTOM_THEME_DEFAULTS: { sidebar: string; accent: string; topbar: string };
   newCustomTheme(existing?: SfCustomThemeDef[]): SfCustomThemeDef;
