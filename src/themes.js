@@ -40,15 +40,17 @@
   // BRAND color — never grey; DARK themes use a subtle white wash. So derive it from the brand.
   /** @param {string} bg sidebar background @param {string} active brand/active color @returns {string} */
   const hoverWash = (bg, active) => (luminance(bg) < 140 ? 'rgba(255,255,255,0.08)' : rgba(active, 0.12));
-  // Inactive sidebar text: Slack's LIGHT themes TINT the channel-list text with the brand hue
-  // (aubergine shows clearly PURPLE text, not black). We keep the brand hue but pull it to a
-  // readable luminance on the pale sidebar: a very dark brand (deep purple/indigo) is lightened a
-  // touch so the hue is visible; a lighter mid-tone brand (green/orange) is darkened a touch for
-  // contrast. Light-hued brands (banana/barbra) fall back to near-black so text stays readable.
+  // Inactive sidebar text: Slack's LIGHT themes use NEAR-INK text with only a hint of the brand
+  // hue — real Slack aubergine-light sidebar text samples ≈ #3E2B40, a dark plum, not a mid
+  // purple (an earlier lighten()/darken() of the accent read visibly too light — user-reported).
+  // So blend the accent 55% toward ink: dark and Slack-like, still clearly brand-tinted. Light-
+  // hued brands (banana/barbra) fall back to pure near-black so text stays readable.
   /** @param {string} active the theme's active/brand color @returns {string} */
   const brandText = (active) => {
     if (luminance(active) > 140) return '#1D1C1D';
-    return luminance(active) < 70 ? lighten(active, 0.12) : darken(active, 0.15);
+    const t = 0.55;
+    const ink = toRgb('#1D1C1D');
+    return toHex(toRgb(active).map((v, i) => v + (ink[i] - v) * t));
   };
 
   const PRESENCE = '#2BAC76', MENTION = '#CD2553';

@@ -60,6 +60,13 @@
     // content is styled.
     codeInline:       ['[role="main"] code'],
     codeBlock:        ['[role="main"] pre'],
+    // Day-divider rows and the unread ("new messages") divider are BOTH [role="heading"] rows in the
+    // stream (durable, semantic). A date divider is distinguished by its child timestamp span with
+    // data-format="3" (Google-owned, locale-independent — per-message times use other formats); the
+    // unread divider by its wavy-line <svg>. tagger.js scans these every dirty pass (WeakSet-cached),
+    // which also fixes the old once-per-conversation date scan missing lazily-loaded history.
+    dividerHeading:   ['[role="heading"][aria-level="2"]', '[role="heading"]'],
+    dateHeading:      ['[data-absolute-timestamp][data-format="3"]'],
     // Thread reply affordance ("N replies · Last reply …"). data-last-reply-time-msec is Google-owned
     // and locale-independent, present on every thread-with-replies row → a durable hook. tagger.js
     // tags the clickable button + the count span so CSS can render a Slack-style link chip.
@@ -122,7 +129,12 @@
     msgRow:      '[data-slackify="msgrow"]',
     msgWide:     '[data-slackify-wide]',
     spaceName:   '[data-slackify="spacename"]',
-    spaceHeader: '[data-slackify="space-header"]',
+    // The open conversation's header title span (tagged for EVERY conversation so typography can
+    // apply Slack's Lato + heavy title weight — the header sits outside [role="main"], so the
+    // pane font rule never reaches it). Space titles additionally carry data-sf-space, which is
+    // what the "#" prefix keys on.
+    convoTitle:  '[data-slackify="convo-title"]',
+    spaceHeader: '[data-slackify="convo-title"][data-sf-space]',
     threadChip:  '[data-slackify="thread-chip"]',
     replyCount:  '[data-slackify="reply-count"]',
     // A reaction count chip (the [role="button"] ancestor of an [data-emoji] img with a count) and
@@ -130,6 +142,13 @@
     // CSS can't reach the pill without :has() — tagger.js walks up and tags both instead.
     reactionPill:'[data-slackify="reaction-pill"]',
     reactions:   '[data-slackify="reactions"]',
+    // The strip child wrapping the "Add reaction" icon button (no count digits — that's how the
+    // tagger tells it from a count chip). Styled as a capsule and CSS-ordered after the pills.
+    reactionAdd: '[data-slackify="reaction-add"]',
+    // The unread ("new messages") divider heading + its label chip — restyled by 'unreadline'
+    // from GChat's wavy blue line into Slack's straight red line with the label at the right.
+    unreadLine:  '[data-slackify="unread-line"]',
+    unreadLabel: '[data-slackify="unread-label"]',
     // The per-message column GChat right-aligns for YOUR own messages (highest flex-end ancestor of
     // a colored self-bubble). tagger.js tags it so the "Slack-style own messages" feature can flip
     // it to the left column and drop your avatar into the gutter.
@@ -164,6 +183,7 @@
     { id: 'selfslack',    group: 'messages', label: 'Slack-style own messages', default: true, desc: 'Show your own messages left-aligned in the main column with your avatar, like Slack (instead of right-aligned bubbles). Pairs with “Flat messages” to drop the blue bubble.' },
     { id: 'composer',     group: 'messages', label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
     { id: 'datedividers', group: 'details',  label: 'Date dividers',           default: true,  desc: 'Slack-style date separators with a divider line' },
+    { id: 'unreadline',   group: 'details',  label: 'Slack-style unread line', default: true,  desc: 'Show the new-messages divider as a straight red line (Slack style) instead of the wavy blue line' },
     { id: 'pills',        group: 'details',  label: 'Reaction pills',          default: true,  desc: 'Rounded reaction chips' },
     { id: 'avatarshape',  group: 'details',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
     { id: 'threadreplies',group: 'details',  label: 'Slack-style thread replies',default: true,  desc: 'Show the “N replies” thread affordance as a Slack-style link chip' },

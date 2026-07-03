@@ -66,18 +66,20 @@
     }
   }
 
-  // ---- open-space header title (for the "#" prefix when a SPACE is open) ----
-  // The conversation header title sits in a button[aria-haspopup="menu"] near the top, right of the
-  // rail (it's NOT inside [role="main"]). The title is the largest-font leaf text in it. Only spaces
-  // get a "#". Cached by group-id so getComputedStyle runs only on a conversation switch.
+  // ---- conversation header title (Lato/weight for ALL conversations; "#" prefix for spaces) ----
+  // The header title sits in a button[aria-haspopup="menu"] near the top, right of the rail (it's
+  // NOT inside [role="main"], so the pane typography rule never reaches it). The title is the
+  // largest-font leaf text in it. Tagged "convo-title" for every conversation; space titles also
+  // get data-sf-space (the spacehash hook). Cached by group-id so getComputedStyle runs only on a
+  // conversation switch.
   let lastHeaderGid;
   function tagSpaceHeader(pane) {
     const g = (pane && pane.getAttribute('data-group-id')) || '';
     if (g === lastHeaderGid) return;
     lastHeaderGid = g;
-    const ex = document.querySelector('[data-slackify="space-header"]');
-    if (ex) ex.removeAttribute('data-slackify');
-    if (!g.startsWith('space/')) return;
+    const ex = document.querySelector('[data-slackify="convo-title"]');
+    if (ex) { ex.removeAttribute('data-slackify'); ex.removeAttribute('data-sf-space'); }
+    if (!g) return;
     const rail = document.querySelector('[data-slackify="rail"]');
     const railRight = rail ? rail.getBoundingClientRect().right : 320;
     let best = null, bestSize = 18;
@@ -92,7 +94,10 @@
         if (fs > bestSize) { bestSize = fs; best = el; }
       }
     }
-    if (best) best.setAttribute('data-slackify', 'space-header');
+    if (best) {
+      best.setAttribute('data-slackify', 'convo-title');
+      if (g.startsWith('space/')) best.setAttribute('data-sf-space', '');
+    }
   }
 
   // ---- centered max-width message column; cached ----
@@ -130,6 +135,43 @@
       if (t && t.length <= 40 && isDate(t)) toTag.push(el);
     }
     for (const el of toTag) tagDate(el);
+  }
+
+  // ---- stream dividers: day headings + the unread ("new messages") divider ----
+  // Both are [role="heading"] rows (durable, semantic). A DATE divider carries a timestamp span
+  // with data-format="3" (Google-owned, locale-independent) — tag it "date" (pill) and the heading
+  // "datewrap" (full-width row, so the divider line actually spans the stream — the old text-based
+  // scan tagged the pill's 90px parent, leaving the line invisible). The UNREAD divider instead
+  // holds a wide wavy-line <svg> — tag the heading "unread-line" and its text chip "unread-label".
+  // Runs every dirty pass (WeakSet-cached per heading, no getComputedStyle), so dividers inside
+  // lazily-loaded history are caught — the old once-per-conversation cache missed them.
+  const seenDividerHeads = new WeakSet();
+  function scanDividers(pane) {
+    if (!pane) return;
+    const dates = [], unreads = [];
+    for (const head of C.allMatchEls('dividerHeading', pane)) {   // READ (no style reads)
+      if (seenDividerHeads.has(head)) continue;
+      seenDividerHeads.add(head);
+      const ts = head.querySelector(C.sel('dateHeading'));
+      if (ts) { dates.push([head, ts]); continue; }
+      const svg = head.querySelector('svg');
+      // require a WIDE svg wrapper so an icon in some other heading can't false-positive
+      if (svg && svg.parentElement && svg.parentElement.clientWidth > 200) unreads.push(head);
+    }
+    for (const [head, ts] of dates) {                             // WRITE
+      if (!ts.hasAttribute('data-slackify')) ts.setAttribute('data-slackify', 'date');
+      if (!head.hasAttribute('data-slackify')) head.setAttribute('data-slackify', 'datewrap');
+    }
+    for (const head of unreads) {
+      if (head.hasAttribute('data-slackify')) continue;
+      head.setAttribute('data-slackify', 'unread-line');
+      for (const c of head.children) {
+        if (!c.querySelector('svg') && (c.textContent || '').trim()) {
+          c.setAttribute('data-slackify', 'unread-label');
+          break;
+        }
+      }
+    }
   }
 
   // ---- thread reply affordance: tag the clickable button + the "N replies" count span ----
@@ -178,6 +220,18 @@
     }
     for (const el of pills) el.setAttribute('data-slackify', 'reaction-pill');   // WRITE
     for (const el of strips) el.setAttribute('data-slackify', 'reactions');
+    // Within each newly-tagged strip, tag the "Add reaction" wrapper (a child holding a button but
+    // no count digits) so CSS can reshape GChat's grey radius-50% blob and order it after the
+    // pills. Hidden duplicate wrappers get tagged too — harmless, they never render.
+    for (const s of strips) {
+      for (const c of s.children) {
+        if (c.hasAttribute('data-slackify')) continue;
+        if (/\d/.test(c.textContent || '')) continue;
+        if (c.matches('button, [role="button"]') || c.querySelector('button, [role="button"]')) {
+          c.setAttribute('data-slackify', 'reaction-add');
+        }
+      }
+    }
   }
 
   // ---- status chip: first button in the topbar with a visible (non-transparent) background ----
@@ -475,7 +529,7 @@
       try { scanAvatars(rail); } catch (e) {}
       try { scanSpaceNames(rail); } catch (e) {}
       try { if (pane) tagStream(pane); } catch (e) {}
-      if (pane) { try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { scanReactionPills(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
+      if (pane) { try { scanDividers(pane); } catch (e) {} try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { scanReactionPills(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
     }
     const hasTime = () => !deadline || typeof deadline.timeRemaining !== 'function' || deadline.timeRemaining() > 3;
     for (const t of topicQueue) {

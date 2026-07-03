@@ -72,10 +72,17 @@
     // ===== TYPOGRAPHY (Slack font) =====
     // Set font-family on CONTAINERS only (not "*") so text inherits Lato while Material icon
     // fonts on icon elements keep their own family and don't turn into letters.
+    // Base: set the stack on <body> so ANY text Google doesn't give an explicit family inherits
+    // Lato (icon fonts and code set their own family, so they're untouched — still no "*").
+    parts.push(mk('typography', ['body'], '', { 'font-family': 'var(--sf-font)' }));
     parts.push(mk('typography', [TAG.rail], '', { 'font-family': 'var(--sf-font)' }));
     parts.push(mk('typography', SEL.conversationPane, '', { 'font-family': 'var(--sf-font)' }));
     parts.push(mk('typography', SEL.composeBox, '', { 'font-family': 'var(--sf-font)' }));
     parts.push(mk('typography', SEL.messageTopic, '', { 'line-height': '1.46' }));
+    // Conversation header title: it sits OUTSIDE [role="main"] with Google Sans set explicitly,
+    // so the pane rule can't reach it — target the tagged title span directly, with Slack's
+    // heavy title weight (Slack renders channel/DM titles in Lato Black).
+    parts.push(mk('typography', [TAG.convoTitle], '', { 'font-family': 'var(--sf-font)', 'font-weight': '900' }));
 
     // ===== SIDEBAR =====
     // Targets the precisely JS-tagged rail ([data-slackify="rail"]) — NO :has() in CSS, so
@@ -100,6 +107,10 @@
     // old :is() list missed), then add Slack's subtle theme-tinted hover on the row itself.
     parts.push(mk('sidebar', [TAG.rail], ' *:hover', { 'background-color': 'transparent' }));
     parts.push(mk('sidebar', [TAG.rail], ' [role="listitem"]:hover', { 'background-color': 'var(--sf-side-hover-overlay)' }));
+    // Consistent row shape: GChat gives DM rows a full pill radius but space rows a small one, so
+    // the hover/active fill changes shape per section. Slack uses one squarish radius everywhere —
+    // normalize every rail row to the same 6px the active-row rule uses.
+    parts.push(mk('sidebar', [TAG.rail], ' [role="listitem"]', { 'border-radius': '6px' }));
     // "New chat" FAB: the rail makes descendant backgrounds transparent, so on the dark rail the FAB
     // merges into the background. Give it a distinct surface + outline (mode-reactive) so it stands out.
     parts.push(mk('sidebar', SEL.newChat, '', { 'background-color': 'var(--sf-side-hover-overlay)', 'border': '1px solid var(--sf-side-text)' }));
@@ -210,6 +221,19 @@
     parts.push(mk('datedividers', [TAG.dateWrap], '::before', { content: '""', position: 'absolute', left: '16px', right: '16px', top: '50%', 'border-top': '1px solid var(--sf-date-line)', 'z-index': '0' }));
     parts.push(mk('datedividers', [TAG.date], '', { position: 'relative', 'z-index': '1', display: 'inline-block', 'background-color': 'var(--sf-date-bg)', color: 'var(--sf-date-text)', border: '1px solid var(--sf-date-line)', 'border-radius': '12px', padding: '2px 12px', 'font-size': '12px', 'font-weight': '700' }));
 
+    // ===== UNREAD DIVIDER (Slack-style: straight red line, label at the right) =====
+    // GChat draws a wavy blue <svg> line with a centered "Unread" chip; Slack draws a straight red
+    // line with a red label at the right edge. Hide the svg, draw the line via ::before, and move
+    // the (localized — we never rewrite its text) label chip to the right. Slack's red is the same
+    // in light and dark, so no mode variable is needed.
+    parts.push(mk('unreadline', [TAG.unreadLine], '', { position: 'relative' }));
+    parts.push(mk('unreadline', [TAG.unreadLine], ' svg', { display: 'none' }));
+    parts.push(mk('unreadline', [TAG.unreadLine], '::before', { content: '""', position: 'absolute', left: '16px', right: '16px', top: '50%', 'border-top': '1px solid #E01E5A' }));
+    parts.push(mk('unreadline', [TAG.unreadLabel], '', {
+      position: 'absolute', right: '16px', left: 'auto', top: '50%', transform: 'translateY(-50%)',
+      color: '#E01E5A', 'font-weight': '700', 'z-index': '1',
+    }));
+
     // ===== MENTION PILLS (Slack-style @mention chips) =====
     // [data-user-mention-type] is Google's own marker on inline @mentions (never avatars/names).
     // Give it a tinted rounded background + readable blue text, both mode-reactive (vars in MODES).
@@ -222,6 +246,17 @@
     // The chip itself is tagged by tagger.js (data-emoji sits on the inner <img>, so [data-emoji]
     // alone would round the emoji image, not the pill). Full capsule radius = Slack's reaction chip.
     parts.push(mk('pills', [TAG.reactionPill], '', { 'border-radius': '999px' }));
+    // "Add reaction" affordance — made CONSISTENT with the count pills (Slack renders both as the
+    // same capsule chip, add-affordance last). GChat's icon button is a radius-50% blob whose grey
+    // state layer can stretch into an ellipse, and on your own messages it sits FIRST in the strip,
+    // reading as a broken first pill. Reshape it into the same capsule (padding brings it to pill
+    // proportions), replace the stretched grey layer with our subtle hover, and CSS-order it after
+    // the pills (visual only — DOM and focus order untouched).
+    parts.push(mk('pills', [TAG.reactionAdd], '', { 'order': '1' }));
+    const addBtn = [`${TAG.reactionAdd} button`, `${TAG.reactionAdd} [role="button"]`];
+    parts.push(mk('pills', addBtn, '', { 'border-radius': '999px', 'background-color': 'transparent', 'padding': '0 8px', 'width': 'auto' }));
+    parts.push(mk('pills', addBtn, ' *', { 'background-color': 'transparent' }));
+    parts.push(mk('pills', addBtn, ':hover', { 'background-color': 'var(--sf-msg-hover)' }));
     // Message hover toolbar — a floating action bar like Slack's. Surface is a MODE var (rule 8):
     // a hard-coded white here left GChat's light dark-mode icons invisible in dark mode.
     parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': 'var(--sf-toolbar-bg)', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));

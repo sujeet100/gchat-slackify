@@ -40,6 +40,8 @@
     selfAvatar: '[role="banner"] img[src*="googleusercontent.com"]', // the signed-in user's own avatar (account button) — source for the Slack-style self-message avatar/name
     messageTimestamp: '[role="main"] [data-absolute-timestamp]', // per-message time; tagged "self-meta" on own messages to host the synthetic name on the time's line
     bannerMenu: '[role="banner"] [role="menu"]', // Help/Support popup; only exists while the menu is OPEN — re-inked so it isn't white-on-white
+    dateHeading: '[role="main"] [data-absolute-timestamp][data-format="3"]', // day-divider pill inside its [role="heading"] row; present only in conversations spanning days
+    dividerHeading: '[role="main"] [role="heading"][aria-level="2"]', // day/unread divider rows (datewrap / unread-line hosts)
   };
 
   const count = (sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return 'INVALID:' + e.message; } };

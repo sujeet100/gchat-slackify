@@ -6,6 +6,32 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-07-03
+
+### Added
+- **Slack-style unread line** (default ON): the new-messages divider is now a straight red line
+  with the label at the right (Slack style) instead of GChat's wavy blue line with a centered chip.
+
+### Fixed
+- **Date dividers actually get their line now.** Two bugs: the once-per-conversation date scan
+  missed dividers inside lazily-loaded history, and it tagged the pill's 90px parent as the "wrap",
+  so the divider line never spanned the stream. Dividers are now found via durable hooks — the
+  `[role="heading"]` row and its `data-format="3"` timestamp span — on every pass (cached per
+  element).
+- **"Add reaction" made consistent with the count pills**: it rendered as a grey radius-50% ellipse
+  and sat FIRST in the strip on your own messages, reading as a broken first pill. It's now the
+  same capsule chip as the count pills (Slack shape), with a subtle hover, ordered after them
+  (CSS order only — DOM/focus order untouched).
+- **Sidebar hover shape normalized**: GChat gives DM rows a full pill radius but space rows a small
+  one; all rail rows now use the same squarish 6px radius (matches Slack and our active-row style).
+- **Sidebar text darkened to match real Slack**: light-mode sidebar text was a too-light mid tone
+  (e.g. aubergine `#743A7B`); it's now the accent blended 55% toward ink (`#3C1D3F` for aubergine —
+  real Slack samples ≈ `#3E2B40`). Applies to built-in and custom themes.
+- **Slack font on the conversation header title**: the header sits outside the message pane with
+  Google Sans set explicitly, so Lato never reached it. The title span is now tagged for every
+  conversation (spaces keep their "#") and gets Lato at Slack's heavy title weight; the base font
+  is also set on `<body>` so any text without an explicit Google font inherits Lato.
+
 ## [1.2.2] — 2026-07-03
 
 ### Removed
