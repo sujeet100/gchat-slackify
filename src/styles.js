@@ -118,11 +118,13 @@
     const searchInBanner = SEL.search.map((s) => `${SEL.topBar[0]} ${s}`);
     parts.push(mk('topbar', searchInBanner, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
     parts.push(mk('topbar', searchInBanner, ' svg', { fill: 'var(--sf-search-drop-text)' }));
-    // The search RESULTS dropdown renders in the banner but outside [role="search"], so the banner
-    // white-text rule whitens its rows (white-on-white). Restore native ink on it (keeps it native).
-    parts.push(mk('topbar', SEL.searchDropdown, '', { color: 'var(--sf-search-drop-text)' }));
-    parts.push(mk('topbar', SEL.searchDropdown, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
-    parts.push(mk('topbar', SEL.searchDropdown, ' svg', { fill: 'var(--sf-search-drop-text)' }));
+    // The search RESULTS dropdown and the Help/Support [role="menu"] both render in the banner but
+    // on native light surfaces, so the banner white-text rule whitens their rows (white-on-white).
+    // Restore native ink on both (keeps them native).
+    const bannerPopups = SEL.searchDropdown.concat(SEL.bannerMenu);
+    parts.push(mk('topbar', bannerPopups, '', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', bannerPopups, ' *:not(img)', { color: 'var(--sf-search-drop-text)' }));
+    parts.push(mk('topbar', bannerPopups, ' svg', { fill: 'var(--sf-search-drop-text)' }));
     // Chat logo: on our dark top bar, GChat's light-mode lockup (dark "Chat" wordmark) is unreadable.
     // Swap it for GChat's OWN dark-theme lockup (a light wordmark) so it stays visible. This points an
     // existing <img> at a sibling STATIC asset on Google's gstatic CDN (the same CDN the light lockup

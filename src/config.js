@@ -74,6 +74,11 @@
     // re-ink rule misses it and the banner white-text rule leaves white-on-white result rows.
     searchInput:        ['[role="search"] input', '[role="search"] [contenteditable]'],
     searchDropdown:     ['[role="banner"] [role="listbox"]'],
+    // The Help/Support menu (and any [role="menu"] popup) ALSO renders inside the banner on a
+    // native light surface, so the banner white-text rule made its items white-on-white (verified
+    // live: Help / Training / Send feedback). Re-inked exactly like the search dropdown. The apps
+    // grid and account card are iframes — our CSS can't reach them, so they never had this bug.
+    bannerMenu:         ['[role="banner"] [role="menu"]'],
     // GChat's "New chat" FAB. data-is-fab is Google-owned + locale-independent → durable. Our rail
     // makes descendant backgrounds transparent, which hides the FAB on the dark rail; we re-surface it.
     newChat:            ['[data-slackify="rail"] [data-is-fab]'],

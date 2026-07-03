@@ -39,6 +39,7 @@
     threadReply: '[role="main"] [data-last-reply-time-msec]', // thread reply rows; present only in spaces with threads
     selfAvatar: '[role="banner"] img[src*="googleusercontent.com"]', // the signed-in user's own avatar (account button) — source for the Slack-style self-message avatar/name
     messageTimestamp: '[role="main"] [data-absolute-timestamp]', // per-message time; tagged "self-meta" on own messages to host the synthetic name on the time's line
+    bannerMenu: '[role="banner"] [role="menu"]', // Help/Support popup; only exists while the menu is OPEN — re-inked so it isn't white-on-white
   };
 
   const count = (sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return 'INVALID:' + e.message; } };

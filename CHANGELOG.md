@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-07-03
+
+### Fixed
+- The Help/Support menu in the top bar was unreadable (white-on-white): it renders inside the
+  themed banner on a native light surface, so the banner white-text rule hit its items. Its ink is
+  now restored the same way as the search dropdown (`[role="banner"] [role="menu"]`).
+
 ## [1.2.0] — 2026-07-03
 
 ### Added
