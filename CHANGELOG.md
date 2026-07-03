@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-07-03
+
+### Removed
+- The Cmd/Ctrl+Shift+K shortcut: Google Chat already binds it natively for "New chat" (also `q`),
+  and our capture-phase handler would have shadowed Google's own. The shortcuts feature is now
+  Cmd/Ctrl+K only — additive by policy, never a combo Chat binds (press Shift+? in Chat for its
+  native list).
+
 ## [1.2.1] — 2026-07-03
 
 ### Fixed

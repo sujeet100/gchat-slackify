@@ -30,8 +30,8 @@ The popup — pick a theme (light/dark follows your Google Chat setting automati
   themed sidebar, themed top bar, flat messages, full-width/left-aligned messages, readable line
   width, compact density, row hover, active-conversation highlight, bold unread, Slack-style date
   dividers, reaction pills
-- ⌨️ **Optional Slack shortcuts** (off by default) — `Cmd/Ctrl+K` focuses search, `Cmd/Ctrl+Shift+K`
-  starts a new chat
+- ⌨️ **Optional Slack shortcut** (off by default) — `Cmd/Ctrl+K` focuses search, like Slack's quick
+  switcher (Chat's own shortcuts — `Shift+?` to see them — keep working)
 - 🍆 Aubergine sidebar & top bar, Slack-blue active conversation, flattened message bubbles,
   Slack-style date pills on a divider line
 

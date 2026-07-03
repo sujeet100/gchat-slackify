@@ -12,7 +12,9 @@ changes Chat's behavior, and **no data ever leaves the browser**.
 One deliberate, narrow exception: the **`shortcuts` feature (default OFF)** adds Slack-style
 keyboard shortcuts (`src/shortcuts.js`). It only ever `focus()`es/`click()`s elements Chat
 already renders, checks its feature attribute per keystroke, and never consumes a key when its
-target is missing (fail-safe). Do not grow it into behavior that mutates or reorders Chat's UI.
+target is missing (fail-safe). Do not grow it into behavior that mutates or reorders Chat's UI,
+and **never bind a combo Chat already has** (check Shift+? first — Cmd/Ctrl+Shift+K was removed
+for exactly this: Chat binds it natively for "New chat").
 
 ## The 10 rules (non-negotiable)
 
@@ -94,7 +96,7 @@ Run `npm test` before every change that touches `tagger.js`, `styles.js`, or `co
 | `src/apply.js` | injects the sheet; reflects prefs onto `<html data-sf-*>`; listens to storage |
 | `src/tagger.js` | MutationObserver that stamps `data-slackify` tags on hook-less elements |
 | `src/controls.js` | injects the in-page "Hide meetings" switch into Chat's Home filter row; writes prefs to `chrome.storage.sync` (same path as the popup) |
-| `src/shortcuts.js` | opt-in Slack keyboard shortcuts (⌘/Ctrl+K search, ⌘/Ctrl+⇧+K new chat) — additive only, fail-safe |
+| `src/shortcuts.js` | opt-in Slack keyboard shortcut (⌘/Ctrl+K → search) — additive only, fail-safe, never a combo Chat binds |
 | `popup/` | settings UI (toggles, theme, light/dark) → `chrome.storage.sync` |
 | `tools/health-check.js` | paste-in selector health check |
 | `docs/` | best practices + Slack theme reference |

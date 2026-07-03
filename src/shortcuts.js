@@ -10,10 +10,13 @@
  *     centralized selectors in config.js) — no DOM mutation, no synthetic navigation.
  *   - Fails safe: if a selector stops matching, the key is NOT consumed (no preventDefault), so
  *     the browser/Chat behavior is untouched.
+ *   - Never a combo Chat already binds. Cmd/Ctrl+Shift+K was here briefly and REMOVED: Chat binds
+ *     it natively for "New chat" (also `q`), and our capture-phase handler would shadow Google's.
+ *     Check Chat's own list (Shift+? / Ctrl+.) before ever adding a combo.
  *
  * Shortcuts (Cmd on macOS, Ctrl elsewhere):
- *   - Cmd/Ctrl+K        → focus the search box (Slack's quick switcher muscle memory)
- *   - Cmd/Ctrl+Shift+K  → start a new chat (clicks Chat's own "New chat" button)
+ *   - Cmd/Ctrl+K → focus the search box (Slack's quick switcher muscle memory; Chat's own
+ *     search shortcut is `/`, so this is purely additive)
  */
 ;(function () {
   const C = globalThis.SLACKIFY_CONFIG;
@@ -26,25 +29,14 @@
 
   window.addEventListener('keydown', (e) => {
     try {
-      if (e.code !== 'KeyK' || !(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (e.code !== 'KeyK' || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
       if (!enabled()) return;
-      if (e.shiftKey) {
-        // New chat: Chat's own FAB ([data-is-fab], Google-owned + locale-independent). The tagged
-        // rail scope (SEL.newChat) is preferred; fall back to the bare attribute before the rail
-        // tagger has run.
-        const fab = C.firstMatchEl('newChat') || document.querySelector('[data-is-fab]');
-        if (!fab) return;                       // fail safe: leave the keystroke alone
-        e.preventDefault();
-        e.stopPropagation();
-        /** @type {HTMLElement} */ (fab).click();
-      } else {
-        const input = C.firstMatchEl('searchInput');
-        if (!input) return;                     // fail safe
-        e.preventDefault();
-        e.stopPropagation();
-        /** @type {HTMLElement} */ (input).focus();
-        /** @type {HTMLElement} */ (input).click();   // some builds open the suggestion list on click
-      }
+      const input = C.firstMatchEl('searchInput');
+      if (!input) return;                       // fail safe: leave the keystroke alone
+      e.preventDefault();
+      e.stopPropagation();
+      /** @type {HTMLElement} */ (input).focus();
+      /** @type {HTMLElement} */ (input).click();   // some builds open the suggestion list on click
     } catch (err) {}
   }, true);   // capture phase: run before Chat's handlers so the combo isn't swallowed elsewhere
 })();

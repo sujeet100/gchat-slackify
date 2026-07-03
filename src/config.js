@@ -175,9 +175,10 @@
     { id: 'unreadswitch', group: 'nav',      label: 'Visible “Unread” switch',  default: true,  desc: 'Give the Home “Unread” filter a clear themed color when it is ON (GChat’s default ON state is nearly invisible)' },
     { id: 'hidemeetings', group: 'nav',      label: 'Hide meetings from Home', default: false, desc: 'Remove meeting/calendar conversations from the Home feed. They stay in the sidebar “Meetings” section.' },
     { id: 'dimmeetings',  group: 'nav',      label: 'Dim meetings in Home',    default: false, desc: 'Grey out meeting conversations in the Home feed instead of hiding them (ignored when “Hide meetings from Home” is on).' },
-    // The one deliberate exception to "purely cosmetic": ADDS shortcuts (never overrides Chat's own),
-    // handled by src/shortcuts.js, which no-ops entirely unless this feature attribute is on.
-    { id: 'shortcuts',    group: 'shortcuts',label: 'Slack shortcuts (⌘K, ⌘⇧K)', default: false, desc: 'Cmd/Ctrl+K focuses search; Cmd/Ctrl+Shift+K starts a new chat (Ctrl on Windows/Linux)' },
+    // The one deliberate exception to "purely cosmetic": ADDS shortcuts (never overrides Chat's own
+    // — check Chat's list via Shift+? before adding a combo), handled by src/shortcuts.js, which
+    // no-ops entirely unless this feature attribute is on.
+    { id: 'shortcuts',    group: 'shortcuts',label: 'Slack shortcuts (⌘K)', default: false, desc: 'Cmd/Ctrl+K focuses search, like Slack’s quick switcher. Chat’s own shortcuts (Shift+? to list them, e.g. “q” for new chat) keep working.' },
   ];
 
   /** @type {SfPrefs} */
