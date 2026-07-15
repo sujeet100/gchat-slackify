@@ -38,6 +38,7 @@
     codeBlock: '[role="main"] pre', // code blocks <pre>; present only in conversations with code blocks
     threadReply: '[role="main"] [data-last-reply-time-msec]', // thread reply rows; present only in spaces with threads
     selfAvatar: '[role="banner"] img[src*="googleusercontent.com"]', // the signed-in user's own avatar (account button) — source for the Slack-style self-message avatar/name
+    selfMessageAuthor: '[data-compare-to-self-user="true"][data-name]', // self identity (name + best-effort avatar) when there's no account button — i.e. Chat embedded in Gmail (cross-origin chat.google.com iframe); present only when you've posted in the open conversation
     messageTimestamp: '[role="main"] [data-absolute-timestamp]', // per-message time; tagged "self-meta" on own messages to host the synthetic name on the time's line
     bannerMenu: '[role="banner"] [role="menu"]', // Help/Support popup; only exists while the menu is OPEN — re-inked so it isn't white-on-white
     dateHeading: '[role="main"] [data-absolute-timestamp][data-format="3"]', // day-divider pill inside its [role="heading"] row; present only in conversations spanning days

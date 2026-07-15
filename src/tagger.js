@@ -507,26 +507,108 @@
     for (let i = Math.max(0, ts.length - 4); i < ts.length; i++) topicQueue.add(ts[i]);
   }
 
-  // ---- self identity: read the signed-in user's own avatar URL + name ONCE into CSS vars ----
+  // ---- self identity: read the signed-in user's own avatar URL + name into CSS vars ----
   // The "Slack-style own messages" feature paints them (avatar gutter + bold name header) via
-  // pseudo-elements, so we never inject a node into Wiz's message stream. Cached (runs until found,
-  // then never again); no getComputedStyle — just a querySelector + property writes. The image is
-  // already loaded by Chat (the account button), so referencing it is a cache hit, not a fresh fetch.
-  let selfAvatarSet = false;
+  // pseudo-elements, so we never inject a node into Wiz's message stream. No getComputedStyle — just
+  // querySelectors + property writes. Name and avatar latch INDEPENDENTLY (once each var is set it's
+  // never rewritten): the two sources can settle on different passes, and in Gmail the avatar may
+  // never resolve while the name always does — so a single flag would wrongly block the name too.
+  let selfNameSet = false, selfAvatarSet = false;
+
+  // Account slot (/u/N/ in the path) — the avatar differs per signed-in account, so the cache is keyed
+  // by it and a multi-account user never gets the wrong face. Standalone Chat, the embedded Chat frame,
+  // and Gmail all carry the same /u/N/ for a given account. Defaults to '0'.
+  const accountSlot = () => { const m = (window.location.pathname || '').match(/\/u\/(\d+)\//); return m ? m[1] : '0'; };
+
+  // Persist a resolved avatar URL to the extension's LOCAL storage so a context that CANNOT read it can
+  // reuse it — specifically the cross-origin chat.google.com iframe Gmail embeds, which the browser
+  // walls off from Gmail's account button but which shares this extension storage. Local only; nothing
+  // leaves the browser. Fire-and-forget, deduped so we write at most once per distinct URL per frame.
+  let cachedAvatarWritten = '';
+  function cacheSelfAvatar(url) {
+    if (!url || url === cachedAvatarWritten) return;
+    cachedAvatarWritten = url;
+    try {
+      chrome.storage.local.get('sfSelfAvatar', (res) => {
+        const map = (res && res.sfSelfAvatar) || {};
+        const slot = accountSlot();
+        if (map[slot] === url) return;
+        map[slot] = url;
+        try { chrome.storage.local.set({ sfSelfAvatar: map }); } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
+  // Reuse an avatar cached by a context that COULD read it (standalone chat.google.com, where the
+  // account button is present). This is how the walled-off Gmail-embedded Chat frame gets your picture.
+  // One-shot storage read; a write that lands LATER (you open standalone Chat afterwards) is picked up
+  // by the storage.onChanged listener at the bottom of this file, so no reload is needed.
+  let pulledCachedAvatar = false;
+  function pullCachedAvatar() {
+    if (pulledCachedAvatar) return;
+    pulledCachedAvatar = true;
+    try {
+      chrome.storage.local.get('sfSelfAvatar', (res) => {
+        if (selfAvatarSet) return;
+        const url = ((res && res.sfSelfAvatar) || {})[accountSlot()];
+        if (url) { document.documentElement.style.setProperty('--sf-self-avatar', `url("${url}")`); selfAvatarSet = true; }
+      });
+    } catch (e) {}
+  }
+
   function ensureSelfAvatar() {
-    if (selfAvatarSet) return;
-    const img = /** @type {HTMLImageElement | null} */ (C.firstMatchEl('selfAvatar'));
-    const src = img && (img.currentSrc || img.src);
-    if (!src) return;
-    document.documentElement.style.setProperty('--sf-self-avatar', `url("${src}")`);
-    // Name from the account button's aria-label ("Google Account: Jane Doe \n(jane@x.com)"): drop the
-    // localized "…:" prefix and the "(email)", collapse whitespace. JSON.stringify quotes it for CSS
-    // content. If we can't derive a name, the CSS var stays unset and content falls back to "You".
-    const labelEl = img.closest('[aria-label]');
-    const label = labelEl ? labelEl.getAttribute('aria-label') : '';
-    const name = (label || '').replace(/^[^:]*:\s*/, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-    if (name) document.documentElement.style.setProperty('--sf-self-name', JSON.stringify(name));
-    selfAvatarSet = true;
+    if (selfNameSet && selfAvatarSet) return;
+    const de = document.documentElement.style;
+    // 1) Standalone Chat: the account button in the top banner is the authoritative avatar + name.
+    // The image is already loaded by Chat (the account button), so referencing it is a cache hit. We
+    // also stash the URL (cacheSelfAvatar) so the Gmail-embedded frame — which can't read it — reuses it.
+    if (!selfAvatarSet) {
+      const img = /** @type {HTMLImageElement | null} */ (C.firstMatchEl('selfAvatar'));
+      const src = img && (img.currentSrc || img.src);
+      if (src) {
+        de.setProperty('--sf-self-avatar', `url("${src}")`);
+        selfAvatarSet = true;
+        cacheSelfAvatar(src);
+        // Name from the account button's aria-label ("Google Account: Jane Doe \n(jane@x.com)"): drop
+        // the localized "…:" prefix and the "(email)", collapse whitespace.
+        if (!selfNameSet) {
+          const labelEl = img.closest('[aria-label]');
+          const label = labelEl ? labelEl.getAttribute('aria-label') : '';
+          const name = (label || '').replace(/^[^:]*:\s*/, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+          if (name) { de.setProperty('--sf-self-name', JSON.stringify(name)); selfNameSet = true; }
+        }
+      }
+    }
+    // 2) Gmail-embedded Chat is a cross-origin chat.google.com iframe: it has no account button, and
+    // Gmail's (in the top frame) is browser-blocked. Derive identity from one of YOUR OWN messages —
+    // data-name gives the display name directly (always resolves whenever selfslack has work), and the
+    // self hovercard-id / user-id find a matching avatar <img> in-frame IF one is rendered (roster /
+    // header cluster / hovercard). Any hit is also cached for other frames.
+    if (!selfNameSet || !selfAvatarSet) {
+      const selfEl = C.firstMatchEl('selfMessageAuthor');
+      if (selfEl) {
+        if (!selfNameSet) {
+          const name = (selfEl.getAttribute('data-name') || '').trim();
+          if (name) { de.setProperty('--sf-self-name', JSON.stringify(name)); selfNameSet = true; }
+        }
+        if (!selfAvatarSet) {
+          const email = selfEl.getAttribute('data-hovercard-id');
+          const id = (selfEl.getAttribute('data-member-id') || '').split('/').pop();   // "user/human/<id>"
+          const cands = [];
+          if (email) cands.push(`[data-hovercard-id="${CSS.escape(email)}"] img[src*="googleusercontent"]`);
+          if (id) cands.push(`[data-user-id="${CSS.escape(id)}"] img[src*="googleusercontent"]`,
+                             `[data-member-id*="${CSS.escape(id)}"] img[src*="googleusercontent"]`);
+          for (const s of cands) {
+            let im = null; try { im = /** @type {HTMLImageElement|null} */ (document.querySelector(s)); } catch (e) {}
+            const src = im && (im.currentSrc || im.src);
+            if (src) { de.setProperty('--sf-self-avatar', `url("${src}")`); selfAvatarSet = true; cacheSelfAvatar(src); break; }
+          }
+        }
+      }
+    }
+    // 3) Still no in-frame source (the common Gmail-embedded case): reuse the avatar cached by
+    // standalone chat.google.com via the extension's shared local storage.
+    if (!selfAvatarSet) pullCachedAvatar();
   }
 
   // ---- the pass: cheap region work when the tree changed, then chunked visible-topic scans ----
@@ -566,6 +648,17 @@
   }
 
   schedule();   // initial
+
+  // If the self avatar is cached LATER (e.g. you open standalone chat.google.com after this Gmail tab
+  // was already up), paint it live — no reload. Only acts when we haven't already resolved one, and
+  // only for our own account slot. Uses chrome.storage, no DOM/layout work.
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !changes.sfSelfAvatar || selfAvatarSet) return;
+      const url = (changes.sfSelfAvatar.newValue || {})[accountSlot()];
+      if (url) { document.documentElement.style.setProperty('--sf-self-avatar', `url("${url}")`); selfAvatarSet = true; }
+    });
+  } catch (e) {}
 
   // observer is O(1): flag + schedule. All real work happens in the chunked idle pass.
   const mo = new MutationObserver(() => { dirty = true; schedule(); });

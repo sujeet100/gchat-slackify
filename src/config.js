@@ -98,6 +98,17 @@
     // fallback (the chat logo is gstatic, the workspace logo is google.com/…/logo.gif — neither match).
     selfAvatar:         ['[role="banner"] [aria-label^="Google Account"] img',
                          '[role="banner"] img[src*="googleusercontent.com"]'],
+    // Identity source for --sf-self-name/--sf-self-avatar when there's NO account button in this frame.
+    // Gmail embeds Chat as a CROSS-ORIGIN chat.google.com iframe (verified live: href
+    // chat.google.com/u/0/frame?…&origin=https://mail.google.com), so this frame has no account button
+    // AND is browser-blocked from reading Gmail's. The durable in-frame identity is the sender span on
+    // one of YOUR OWN messages: data-compare-to-self-user is Google-owned + locale-independent, present
+    // whenever there's a self message to style (exactly selfslack's case). data-name gives the display
+    // name directly (this is what makes the NAME work in Gmail); its data-hovercard-id / data-member-id
+    // let tagger.js find a matching self avatar <img> in-frame IF one is rendered (roster / header
+    // cluster / hovercard). The picture usually isn't in-frame, so tagger falls back to the avatar
+    // cached by standalone chat.google.com (shared via chrome.storage) — see ensureSelfAvatar.
+    selfMessageAuthor:  ['[data-compare-to-self-user="true"][data-name]'],
     // message-area containers — used to suppress GChat's own grey hover/active fills
     mainRow:          ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'],
     messageContainer: ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'],

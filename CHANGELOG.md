@@ -6,6 +6,17 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.4.4] — 2026-07-14
+
+### Fixed
+- Your own name and profile picture did not appear on your messages when Google Chat is opened
+  inside Gmail. Gmail embeds Chat as a separate (cross-origin) frame with no account button, so the
+  "Slack-style own messages" feature had no source for either. Your **name** is now read from your
+  own message's author tag, which is present in both standalone and Gmail Chat. Your **picture** is
+  remembered when you open `chat.google.com` directly and reused inside Gmail (kept in the
+  extension's local storage — nothing leaves the browser); until then, or if you never open
+  standalone Chat, the Gmail view shows a neutral placeholder tile. Standalone Chat is unchanged.
+
 ## [1.4.2] — 2026-07-03
 
 ### Removed
