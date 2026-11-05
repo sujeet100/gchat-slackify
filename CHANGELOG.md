@@ -6,6 +6,49 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [1.4.5] — 2026-11-05
+
+### Fixed
+- A message you had just sent stayed **right-aligned with no avatar** until you refreshed or switched
+  conversations. Your own messages were recognised by their blue bubble, but Chat first paints a
+  just-sent message in a pending pale grey that animates to blue over ~400ms — exactly when we scan
+  it — so it was filed as someone else's message. Own messages are now recognised from Google's
+  per-message author flag (`data-is-viewer-message-creator`), which is stable from the first frame,
+  and message blocks are re-checked when Chat re-renders them (on send, on server confirmation, or
+  when a reaction lands on an older visible message), so a sent message settles into the left column
+  within a frame or two.
+- **Emoji-only messages** kept GChat's grey rounded box, poking out left of the text column: the
+  bubble detector required text, and a lone emoji is an image. They're now flattened like any other
+  message.
+- **Reactions**: the "Add reaction" button was a circle inside a lopsided wrapper, so its hover circle
+  sat below its icon, and on your own messages the alignment reset pushed chip and icon contents into
+  the top-left corner. It's now a chip of the same height and corner radius as the reaction chips,
+  ordered after them, and the chips line up under the message text instead of 12px left of it. The
+  bar is styled straight from Google's own reaction attributes rather than tagged by script, so a
+  re-rendered chip is styled on its first paint (no flash of native styling).
+- Hovering one of your own messages no longer shows a pale-blue box behind the flattened text (GChat
+  paints that through a pseudo-element state layer).
+- One left edge for every message: the first message of a group, its grouped follow-ups, and your own
+  messages (name and body) previously sat up to 4px apart.
+- In Gmail-embedded Chat, the fallback that reads your display name could pick up another person's
+  name (the old hook was set on every sender); it now reads it from a message flagged as yours.
+- **Editing one of your messages**: the Update and Cancel buttons sat at different heights and the
+  edit box shrank to the width of its text. The left-alignment reset forced `align-self: flex-start`
+  on every element in your message, which in a row of controls means top-aligned rather than
+  centred. The reset now touches only `div` layout containers (where the right-push actually lives)
+  and skips the editor, which instead gets a full-width box at the message's left edge, like Slack.
+- The **hover action bar** on your own messages opened off the left edge of the pane, covering your
+  avatar and name and clipping the first quick reaction. Chat anchors it to grow leftward from a
+  right-aligned bubble; it now opens from the bubble's left edge like it does on everyone else's.
+- The **thread row** ("N replies") under your own messages was mirrored, with the curved connector
+  after the reply count; it now matches everyone else's.
+- **Date dividers** lost their pill and line: Chat now often renders day headings without the
+  timestamp element we keyed on. They're recognised structurally (a level-2 divider heading with a
+  single short text leaf and no unread-line icon), and a heading seen before its text renders is
+  re-checked instead of skipped for good.
+- The parent of an open thread is ringed by Chat; with the bubble flattened that ring drew a hard
+  rectangle like a text field. It's now rounded.
+
 ## [1.4.4] — 2026-07-14
 
 ### Fixed

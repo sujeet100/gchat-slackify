@@ -38,10 +38,19 @@
     codeBlock: '[role="main"] pre', // code blocks <pre>; present only in conversations with code blocks
     threadReply: '[role="main"] [data-last-reply-time-msec]', // thread reply rows; present only in spaces with threads
     selfAvatar: '[role="banner"] img[src*="googleusercontent.com"]', // the signed-in user's own avatar (account button) — source for the Slack-style self-message avatar/name
-    selfMessageAuthor: '[data-compare-to-self-user="true"][data-name]', // self identity (name + best-effort avatar) when there's no account button — i.e. Chat embedded in Gmail (cross-origin chat.google.com iframe); present only when you've posted in the open conversation
+    messageRoot: '[role="main"] [data-id][data-user-id]', // per-message root (holds bubble, sender name, reactions bar); scopes self detection
+    messageOwner: '[role="main"] [data-is-viewer-message-creator]', // per-message "is it mine?" flag ("true"/"false"); if this disappears, self-rows fall back to bubble colour (breaks on just-sent messages)
+    viewerMessage: '[role="main"] [data-is-viewer-message-creator="true"]', // YOUR messages — drives selfslack + the Gmail-embedded self name; present only when you've posted in the open conversation
+    messageAuthor: '[role="main"] [data-name][data-is-message]', // sender-name span inside a message root (self identity when scoped to a viewerMessage root)
+    reactionList: '[data-reaction-upper-bound] [role="list"]', // per-message reactions bar; present only when a message has reactions
+    reactionChip: '[data-reaction-upper-bound] [data-count] > [role="button"]', // reaction count chips (Slack-shaped by "pills")
+    reactionAddButton: '[data-reaction-upper-bound] [data-emoji-picker-button-id]', // "Add reaction" affordance in the bar (reshaped from a circle to a chip, ordered last)
     messageTimestamp: '[role="main"] [data-absolute-timestamp]', // per-message time; tagged "self-meta" on own messages to host the synthetic name on the time's line
     bannerMenu: '[role="banner"] [role="menu"]', // Help/Support popup; only exists while the menu is OPEN — re-inked so it isn't white-on-white
-    dateHeading: '[role="main"] [data-absolute-timestamp][data-format="3"]', // day-divider pill inside its [role="heading"] row; present only in conversations spanning days
+    dateHeading: '[role="main"] [data-absolute-timestamp][data-format="3"]', // day-divider timestamp inside its [role="heading"] row — often ABSENT now (Chat renders plain-text headings); tagger falls back to the heading's sole text leaf, so check `date` tags below instead
+    dateTagged: '[role="main"] [data-slackify="date"]', // day-divider pills the tagger resolved (either path); should be >= 1 in conversations spanning days
+    messageEditor: '[role="main"] c-wiz[data-is-edit="true"]', // inline editor; only while editing one of your messages (press ↑ in an empty composer)
+    messageHoverBar: '[role="main"] [data-slackify="bubble"] > div[jslog]', // hover action bar; only while hovering a message — selfslack re-anchors it on your own messages
     dividerHeading: '[role="main"] [role="heading"][aria-level="2"]', // day/unread divider rows (datewrap / unread-line hosts)
   };
 

@@ -66,11 +66,15 @@
     // unread divider by its wavy-line <svg>. tagger.js scans these every dirty pass (WeakSet-cached),
     // which also fixes the old once-per-conversation date scan missing lazily-loaded history.
     dividerHeading:   ['[role="heading"][aria-level="2"]', '[role="heading"]'],
+    // Not always rendered: since ~2026-11 Chat often draws the heading as plain nested divs with no
+    // timestamp span. tagger.js then falls back to the heading's sole text leaf (structural).
     dateHeading:      ['[data-absolute-timestamp][data-format="3"]'],
     // Thread reply affordance ("N replies · Last reply …"). data-last-reply-time-msec is Google-owned
     // and locale-independent, present on every thread-with-replies row → a durable hook. tagger.js
     // tags the clickable button + the count span so CSS can render a Slack-style link chip.
     threadReply:      ['[role="main"] [data-last-reply-time-msec]'],
+    // The same row, unscoped, for nesting under another scope (selfslack un-mirrors it on your messages).
+    threadReplyRow:   ['[data-last-reply-time-msec]'],
     // A message timestamp ("1:39 AM"). data-absolute-timestamp + data-format are Google-owned and
     // locale-independent → durable. tagger.js tags the timestamp's header row on YOUR OWN messages as
     // "self-meta"; the "Slack-style own messages" feature then lifts your synthetic name onto that
@@ -98,21 +102,49 @@
     // fallback (the chat logo is gstatic, the workspace logo is google.com/…/logo.gif — neither match).
     selfAvatar:         ['[role="banner"] [aria-label^="Google Account"] img',
                          '[role="banner"] img[src*="googleusercontent.com"]'],
-    // Identity source for --sf-self-name/--sf-self-avatar when there's NO account button in this frame.
-    // Gmail embeds Chat as a CROSS-ORIGIN chat.google.com iframe (verified live: href
-    // chat.google.com/u/0/frame?…&origin=https://mail.google.com), so this frame has no account button
-    // AND is browser-blocked from reading Gmail's. The durable in-frame identity is the sender span on
-    // one of YOUR OWN messages: data-compare-to-self-user is Google-owned + locale-independent, present
-    // whenever there's a self message to style (exactly selfslack's case). data-name gives the display
-    // name directly (this is what makes the NAME work in Gmail); its data-hovercard-id / data-member-id
-    // let tagger.js find a matching self avatar <img> in-frame IF one is rendered (roster / header
-    // cluster / hovercard). The picture usually isn't in-frame, so tagger falls back to the avatar
-    // cached by standalone chat.google.com (shared via chrome.storage) — see ensureSelfAvatar.
-    selfMessageAuthor:  ['[data-compare-to-self-user="true"][data-name]'],
+    // One message's root container (Google-owned data-id + data-user-id = the sender). It holds the
+    // bubble, the sender-name span and the reactions bar, so per-message lookups are scoped to it.
+    messageRoot:        ['[data-id][data-user-id]'],
+    // Google's per-message "is the viewer the author?" flag, on the reactions host inside every
+    // message root: "true" on YOUR messages, "false" on everyone else's (verified live, 2026-11-05).
+    // Locale-independent and — unlike the bubble colour, which animates pending-grey → blue for
+    // ~400ms right after you send — stable from the first render. messageOwner matches either value
+    // (used to detect that Google still ships the flag); viewerMessage matches only yours.
+    messageOwner:       ['[data-is-viewer-message-creator]'],
+    viewerMessage:      ['[data-is-viewer-message-creator="true"]'],
+    // The sender-name span inside a message root (quoted-reply authors also carry data-name but NOT
+    // data-is-message, so they're excluded). Scoped to a viewerMessage root, this is YOUR identity —
+    // the source for --sf-self-name/--sf-self-avatar when there's no account button in this frame:
+    // Gmail embeds Chat as a CROSS-ORIGIN chat.google.com iframe (href chat.google.com/u/0/frame?…
+    // &origin=https://mail.google.com), so that frame has no account button and is browser-blocked
+    // from reading Gmail's. data-name gives the display name; data-hovercard-id / data-member-id let
+    // tagger.js look for a matching avatar <img> in-frame, else it falls back to the avatar cached by
+    // standalone chat.google.com (shared via chrome.storage) — see ensureSelfAvatar.
+    // NB: the old hook, [data-compare-to-self-user="true"], is "true" on EVERY sender (it's a compare
+    // flag, not identity) and could pick up another person's name.
+    messageAuthor:      ['[data-name][data-is-message]'],
+    // ---- reactions bar (styled from Google's own durable attributes — no tagging, so no retag lag) ----
+    // The per-message reactions host carries data-reaction-upper-bound (same element as the
+    // viewer-creator flag). Inside it: the chip list ([role="list"]), each count chip a
+    // [role="button"] in a [data-count] list item, and the "Add reaction" affordance a
+    // [data-emoji-picker-button-id] wrapper (the list's non-listitem child). All Google-owned and
+    // locale-independent (the aria-labels are the localized parts, and we never key on them).
+    reactionList:       ['[data-reaction-upper-bound] [role="list"]'],
+    reactionChip:       ['[data-reaction-upper-bound] [data-count] > [role="button"]'],
+    reactionAddSlot:    ['[data-reaction-upper-bound] [role="list"] > :not([role="listitem"])'],
+    reactionAddButton:  ['[data-reaction-upper-bound] [data-emoji-picker-button-id]'],
     // message-area containers — used to suppress GChat's own grey hover/active fills
     mainRow:          ['[role="main"] [role="listitem"]', '[role="main"] [role="row"]'],
     messageContainer: ['[role="main"] [data-message-id]', '[role="main"] [data-is-tombstone-message-view]'],
     messageToolbar:   ['[role="main"] [role="toolbar"]'],
+    // The inline editor Chat swaps in when you Edit one of your messages. Wiz roots it at a c-wiz
+    // carrying data-is-edit="true" (semantic, locale-independent; inner layers repeat the flag).
+    messageEditor:    ['c-wiz[data-is-edit="true"]'],
+    // The message hover action bar (quick reactions + react/edit/forward/more). Chat inserts it on
+    // hover as an absolutely positioned child of the bubble — the only bubble child that carries
+    // Google's jslog logging attribute (the always-present absolute sibling has none). No role, so
+    // [role="toolbar"] above no longer reaches it. Matched as a CHILD of the tagged bubble.
+    messageHoverBar:  ['div[jslog]'],
     // author-name wrapper: span[data-name][data-is-message] (durable Google attrs). The VISIBLE name
     // is a child span (it sets its own size via a hashed class — styles.js sizes the child too).
     senderName:       ['[role="main"] span[data-name][data-is-message]'],
@@ -151,21 +183,13 @@
     // GChat's curved "elbow" connector beside the thread reply row — Slack has no connector, so
     // the threadreplies feature hides it (tagger detects it by shape; fail-safe if not found).
     threadCurl:  '[data-slackify="thread-curl"]',
-    // A reaction count chip (the [role="button"] ancestor of an [data-emoji] img with a count) and
-    // the strip that holds all of a message's chips. data-emoji sits on the emoji <img> itself, so
-    // CSS can't reach the pill without :has() — tagger.js walks up and tags both instead.
-    reactionPill:'[data-slackify="reaction-pill"]',
-    reactions:   '[data-slackify="reactions"]',
-    // The strip child wrapping the "Add reaction" icon button (no count digits — that's how the
-    // tagger tells it from a count chip). Styled as a capsule and CSS-ordered after the pills.
-    reactionAdd: '[data-slackify="reaction-add"]',
     // The unread ("new messages") divider heading + its label chip — restyled by 'unreadline'
     // from GChat's wavy blue line into Slack's straight red line with the label at the right.
     unreadLine:  '[data-slackify="unread-line"]',
     unreadLabel: '[data-slackify="unread-label"]',
     // The per-message column GChat right-aligns for YOUR own messages (highest flex-end ancestor of
-    // a colored self-bubble). tagger.js tags it so the "Slack-style own messages" feature can flip
-    // it to the left column and drop your avatar into the gutter.
+    // the viewerMessage flag, inside its message root). tagger.js tags it so the "Slack-style own
+    // messages" feature can flip it to the left column and drop your avatar into the gutter.
     selfRow:     '[data-slackify="self-row"]',
     // The timestamp's header row on YOUR OWN messages — tagger tags it so selfslack can place the
     // synthetic name on the same line as GChat's time (instead of the time dropping to its own row).
@@ -198,7 +222,7 @@
     { id: 'composer',     group: 'messages', label: 'Slack-style compose box', default: true,  desc: 'Flatten the message composer into a bordered box instead of a rounded pill' },
     { id: 'datedividers', group: 'details',  label: 'Date dividers',           default: true,  desc: 'Slack-style date separators with a divider line' },
     { id: 'unreadline',   group: 'details',  label: 'Slack-style unread line', default: true,  desc: 'Show the new-messages divider as a straight red line (Slack style) instead of the wavy blue line' },
-    { id: 'pills',        group: 'details',  label: 'Reaction pills',          default: true,  desc: 'Rounded reaction chips' },
+    { id: 'pills',        group: 'details',  label: 'Slack-style reactions',   default: true,  desc: 'Line reaction chips up under the message and show “Add reaction” as a matching chip after them' },
     { id: 'avatarshape',  group: 'details',  label: 'Square avatars',          default: true,  desc: 'Show profile pictures as rounded squares (Slack style) instead of circles' },
     { id: 'threadreplies',group: 'details',  label: 'Slack-style thread replies',default: true,  desc: 'Show the “N replies” thread affordance as a Slack-style link chip' },
     { id: 'codestyle',    group: 'details',  label: 'Code block styling',      default: true,  desc: 'Style inline code and code blocks like Slack (subtle grey background, border)' },

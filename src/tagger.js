@@ -146,17 +146,43 @@
   // Runs every dirty pass (WeakSet-cached per heading, no getComputedStyle), so dividers inside
   // lazily-loaded history are caught — the old once-per-conversation cache missed them.
   const seenDividerHeads = new WeakSet();
+  /** The single short text-bearing leaf under `el`, or null if there are none or several. @param {Element} el @returns {Element|null} */
+  function soleTextLeaf(el) {
+    let found = null;
+    for (const d of el.querySelectorAll('*')) {
+      if (d.children.length) continue;
+      const t = (d.textContent || '').trim();
+      if (!t) continue;
+      if (found || t.length > 40) return null;
+      found = d;
+    }
+    return found;
+  }
   function scanDividers(pane) {
     if (!pane) return;
     const dates = [], unreads = [];
     for (const head of C.allMatchEls('dividerHeading', pane)) {   // READ (no style reads)
       if (seenDividerHeads.has(head)) continue;
-      seenDividerHeads.add(head);
       const ts = head.querySelector(C.sel('dateHeading'));
-      if (ts) { dates.push([head, ts]); continue; }
+      if (ts) { seenDividerHeads.add(head); dates.push([head, ts]); continue; }
       const svg = head.querySelector('svg');
-      // require a WIDE svg wrapper so an icon in some other heading can't false-positive
-      if (svg && svg.parentElement && svg.parentElement.clientWidth > 200) unreads.push(head);
+      if (svg) {
+        seenDividerHeads.add(head);
+        // require a WIDE svg wrapper so an icon in some other heading can't false-positive
+        if (svg.parentElement && svg.parentElement.clientWidth > 200) unreads.push(head);
+        continue;
+      }
+      // Chat often renders the day heading as plain nested divs with NO timestamp span (every
+      // in-app conversation switch, observed 2026-11-05), so the data-format="3" hook above can't be
+      // relied on alone. Structural, locale-independent fallback: a level-2 divider heading with no
+      // svg (so not the unread line) whose text sits in exactly one short leaf is a day divider —
+      // that leaf becomes the pill. A heading whose text hasn't rendered yet is NOT marked seen, so
+      // the next dirty pass re-checks it instead of skipping it forever. The level-2 check is explicit
+      // because allMatchEls falls back to bare [role="heading"] in a conversation with no dividers —
+      // and that matches every level-3 sender-name heading ("You", "Rishika …").
+      if (head.getAttribute('aria-level') !== '2') { seenDividerHeads.add(head); continue; }
+      const leaf = soleTextLeaf(head);
+      if (leaf) { seenDividerHeads.add(head); dates.push([head, leaf]); }
     }
     for (const [head, ts] of dates) {                             // WRITE
       if (!ts.hasAttribute('data-slackify')) ts.setAttribute('data-slackify', 'date');
@@ -213,43 +239,9 @@
     for (const el of curls) el.setAttribute('data-slackify', 'thread-curl');
   }
 
-  // ---- reaction pills: tag each reaction count chip + the strip that holds them ----
-  // data-emoji sits on the emoji <img>; the visible pill is its [role="button"]/<button> ancestor
-  // (verified live) — no durable hook of its own, and CSS can't select an ancestor without :has().
-  // The digit test keeps the count-less "Add reaction" button out. Runs on every dirty pass (like
-  // scanThreadReplies); no getComputedStyle. Only NULL-pill emojis (inline body emojis) are
-  // WeakSet-cached — chips dedupe via their own data-slackify attribute instead, so a Wiz
-  // re-render that builds a NEW chip around a REUSED emoji <img> still gets re-tagged.
-  const nonPillEmojis = new WeakSet();
-  function scanReactionPills(pane) {
-    if (!pane) return;
-    const pills = [], strips = [];
-    for (const em of pane.querySelectorAll('[data-emoji]')) {      // READ (text only)
-      if (nonPillEmojis.has(em)) continue;
-      const pill = em.closest('button, [role="button"]');
-      if (!pill) { nonPillEmojis.add(em); continue; }              // inline body emoji — never a chip
-      if (pill.hasAttribute('data-slackify')) continue;
-      if (!/\d/.test(pill.textContent || '')) continue;            // "Add reaction" (count may appear later — don't cache)
-      pills.push(pill);
-      // the strip = the flex row of all chips, two levels up (pill sits in a per-chip wrapper div)
-      const strip = pill.parentElement && pill.parentElement.parentElement;
-      if (strip && !strip.hasAttribute('data-slackify')) strips.push(strip);
-    }
-    for (const el of pills) el.setAttribute('data-slackify', 'reaction-pill');   // WRITE
-    for (const el of strips) el.setAttribute('data-slackify', 'reactions');
-    // Within each newly-tagged strip, tag the "Add reaction" wrapper (a child holding a button but
-    // no count digits) so CSS can reshape GChat's grey radius-50% blob and order it after the
-    // pills. Hidden duplicate wrappers get tagged too — harmless, they never render.
-    for (const s of strips) {
-      for (const c of s.children) {
-        if (c.hasAttribute('data-slackify')) continue;
-        if (/\d/.test(c.textContent || '')) continue;
-        if (c.matches('button, [role="button"]') || c.querySelector('button, [role="button"]')) {
-          c.setAttribute('data-slackify', 'reaction-add');
-        }
-      }
-    }
-  }
+  // (Reaction chips used to be tagged here. They're now styled straight from Google's durable
+  // reaction-bar attributes — see SELECTORS.reaction* in config.js — so a freshly re-rendered chip is
+  // styled on its very first paint instead of flashing native until the next idle pass.)
 
   // ---- status chip: first button in the topbar with a visible (non-transparent) background ----
   // The "Active/Busy/DND" pill is the only button in [role="banner"] with its own background.
@@ -314,13 +306,13 @@
     }
   }
 
-  // The highest ancestor (up to `topic`) that GChat right-aligns — i.e. carries a flex-end
+  // The highest ancestor (below `stop`) that GChat right-aligns — i.e. carries a flex-end
   // alignment. For YOUR OWN messages this is the per-message column; tagging it lets CSS flip the
   // whole message into the left column. Returns null for a normally-aligned (other-person) element.
-  /** @param {Element} start @param {Element} topic scan boundary @returns {Element|null} */
-  function highestRightAlignedAncestor(start, topic) {
+  /** @param {Element} start @param {Element} stop scan boundary (exclusive) @returns {Element|null} */
+  function highestRightAlignedAncestor(start, stop) {
     let found = null;
-    for (let n = start, i = 0; n && n !== topic && i < 10; n = n.parentElement, i++) {
+    for (let n = start, i = 0; n && n !== stop && i < 12; n = n.parentElement, i++) {
       const cs = getComputedStyle(n);
       if (cs.alignSelf === 'flex-end' || cs.alignItems === 'flex-end' || cs.justifyContent === 'flex-end') found = n;
     }
@@ -329,19 +321,41 @@
 
   // ---- per-topic scan (bubbles + codes + in-topic dates): once per topic, read then write ----
   const processedTopics = new WeakSet();
-  // An element we tagged in each topic. If it later disconnects, Wiz RE-RENDERED the topic (e.g. a
-  // just-sent message that was optimistically rendered, then replaced on server-confirm) and dropped
-  // our tags — so we re-scan instead of trusting processedTopics. This is what makes a newly-sent
-  // message settle into the Slack layout immediately, without needing a conversation switch.
-  const topicAnchor = new WeakMap();
-  /** Scan one message topic once (cached): tag bubbles, dates, wides, self-rows, avatars. @param {Element} topic */
+  // What each processed topic looked like at its last scan. A topic is NOT static: Wiz inserts it as
+  // a shell and fills it a tick later, appends grouped follow-ups into it, and replaces a just-sent
+  // message when the server confirms it (dropping our tags). Caching on "seen once" therefore left
+  // the new message untagged — your own message stayed RIGHT-aligned until a conversation switch
+  // rebuilt the DOM. So we cache on a cheap content fingerprint instead: an unchanged topic still
+  // early-returns with no style or layout reads, a grown/re-rendered one gets re-scanned.
+  const topicState = new WeakMap();
+  const MAX_TRIES = 5;   // bounded settle retries, so a quiet pass always costs zero eventually
+  /** Fingerprint a topic: messages present : our tags surviving. Attribute counts only — no recalc.
+   *  @param {Element} topic @returns {string} */
+  function topicSig(topic) {
+    return `${topic.querySelectorAll('[data-absolute-timestamp]').length}:${topic.querySelectorAll('[data-slackify]').length}`;
+  }
+  /** Scan one message topic (cached by fingerprint): tag bubbles, dates, wides, self-rows, avatars. @param {Element} topic */
   function scanTopic(topic) {
-    const anchor = topicAnchor.get(topic);
-    if (processedTopics.has(topic) && anchor && anchor.isConnected) return;   // done & not re-rendered
+    const st = topicState.get(topic);
+    if (processedTopics.has(topic) && st && !st.retry && st.sig === topicSig(topic)) return;   // unchanged
     const nodes = topic.querySelectorAll('div, span');
     if (!nodes.length) { topicIO.observe(topic); return; }   // skeleton not filled yet → retry later
     processedTopics.add(topic);
     const bubbles = [], dates = [], wides = [], selfRows = [];
+    // YOUR OWN messages come from Google's per-message creator flag, NOT the bubble colour: a
+    // just-sent message is painted a pending pale grey (rgb 240,244,249) that animates to blue over
+    // ~400ms — exactly when we first scan it — so the colour test filed it as someone else's grey
+    // bubble and it stayed right-aligned with no avatar. From the flag, walk up to the highest
+    // right-aligned column inside that message and tag it. Messages that already carry a self-row are
+    // skipped, so a Wiz re-render that dropped ONLY the self-row (bubble tag intact) still heals.
+    // Colour remains as a fallback only if Google stops shipping the flag (legacySelf).
+    const legacySelf = !C.firstMatchEl('messageOwner', topic);
+    for (const flag of C.allMatchEls('viewerMessage', topic)) {   // READ phase (style reads only)
+      const root = flag.closest(C.sel('messageRoot'));
+      if (!root || root.querySelector(C.TAGS.selfRow)) continue;
+      const row = highestRightAlignedAncestor(flag, root);
+      if (row) selfRows.push(row);
+    }
     for (const el of nodes) {                                 // READ phase
       if (el.hasAttribute('data-slackify')) continue;
       if (el.children.length === 0) {
@@ -356,16 +370,19 @@
       // (Code/pre styling targets the <code>/<pre> tags directly in CSS — no tagging needed here.)
       const r = parseFloat(cs.borderTopLeftRadius) || 0;
       if (r < 4) continue;
-      if (!(el.textContent || '').trim()) continue;
+      // A bubble needs content. Text is the usual signal, but an EMOJI-ONLY message renders its emoji
+      // as an <img data-emoji> with no text at all — without this it kept GChat's grey rounded box,
+      // poking out left of the text column. Never a reaction chip: those live inside a button.
+      if (!(el.textContent || '').trim() &&
+          !(el.tagName === 'DIV' && C.firstMatchEl('reaction', el) && !el.closest('button, [role="button"]'))) continue;
       const bg = rgb(cs.backgroundColor);
       const grey = isGrey(bg);
       const colored = r >= 12 && bg && bg.a > 0.4 && !isWhite(bg) && !grey;   // a self (non-grey) bubble
       // catch grey (other-person) bubbles AND colored (self) bubbles; skip white/transparent
       if (grey || colored) bubbles.push(el);
-      // YOUR OWN message: a colored, right-aligned DIV bubble (grey = the other person; a SPAN with a
-      // rounded coloured bg is an icon chip — e.g. a Material symbol — not a message, so require DIV).
-      // Tag the per-message column GChat right-aligns so CSS can flip it left + add the self avatar.
-      if (colored && el.tagName === 'DIV') {
+      // Legacy self detection (only if the creator flag is gone): a colored, right-aligned DIV bubble
+      // (a SPAN with a rounded coloured bg is an icon chip, not a message, so require DIV).
+      if (legacySelf && colored && el.tagName === 'DIV') {
         const row = highestRightAlignedAncestor(el, topic);
         if (row) selfRows.push(row);
       }
@@ -423,8 +440,23 @@
     for (const el of wides) el.setAttribute('data-slackify-wide', '');   // separate attr (orthogonal to bubble)
     for (const el of avatarWraps) el.setAttribute('data-slackify', 'avatar-wrap');
     for (const el of msgRows) if (!el.hasAttribute('data-slackify')) el.setAttribute('data-slackify', 'msgrow');
-    // Remember a stable element so a future pass can detect a Wiz re-render (see topicAnchor above).
-    topicAnchor.set(topic, selfRows[0] || bubbles[0] || topic.firstElementChild);
+    // Record the post-scan fingerprint. If the topic holds a message yet carries none of our tags, or
+    // holds one of YOUR messages that still has no self-row, we caught Wiz mid-render (alignment not
+    // applied yet) — the message would otherwise stay right-aligned until something else changed the
+    // topic, so retry a few times over the next second. (Merely having SOME tag is not "settled": the
+    // pending bubble gets flattened long before its column is right-aligned.) `retry` also bypasses
+    // the early-return, so an earlier idle pass can settle it.
+    const sig = topicSig(topic);
+    const selfPending = C.allMatchEls('viewerMessage', topic).some((f) => {
+      const root = f.closest(C.sel('messageRoot'));
+      return !!root && !root.querySelector(C.TAGS.selfRow);
+    });
+    const unresolved = selfPending || (!sig.startsWith('0:') && sig.endsWith(':0'));
+    const tries = (st ? st.tries : 0) + 1;
+    topicState.set(topic, { sig, tries, retry: unresolved && tries < MAX_TRIES });
+    if (unresolved && tries < MAX_TRIES) {
+      setTimeout(() => { topicQueue.add(topic); schedule(); }, 200 * tries);
+    }
   }
 
   // ---- avatar wrappers OUTSIDE the message stream (rail + Home feed) ----
@@ -483,10 +515,19 @@
   // ---- lazy topic discovery: observe topics, queue only the visible ones (± one viewport) ----
   const seenTopics = new WeakSet();
   const topicQueue = new Set();
+  // Topics currently on/near screen. Kept (instead of unobserving after the first scan) so a Wiz
+  // re-render of an OLDER visible message — e.g. when a reaction lands on it — is re-checked too; the
+  // old "last 4 topics" requeue only covered newly-sent ones. Bounded by what's on screen; entries
+  // leave when they scroll away or are removed from the DOM (then they're unobserved, so no leak).
+  const visibleTopics = new Set();
   const topicIO = new IntersectionObserver((entries) => {
     let any = false;
     for (const e of entries) {
-      if (e.isIntersecting) { topicQueue.add(e.target); topicIO.unobserve(e.target); any = true; }
+      if (e.isIntersecting) { topicQueue.add(e.target); visibleTopics.add(e.target); any = true; }
+      else {
+        visibleTopics.delete(e.target);
+        if (!e.target.isConnected) topicIO.unobserve(e.target);
+      }
     }
     if (any) schedule();
   }, { rootMargin: '600px 0px 600px 0px' });
@@ -499,12 +540,19 @@
     }
   }
 
-  // Re-queue the most recent topics whenever the tree changed, so a re-rendered or just-sent message
-  // (whose tags Wiz dropped on its server-confirm re-render) gets re-scanned. scanTopic early-returns
-  // in O(1) when a topic is unchanged (anchor still connected), so this is cheap on quiet mutations.
+  // Re-queue the most recent topics AND the on-screen ones whenever the tree changed, so a just-sent
+  // message (appended, filled into a fresh shell, or re-rendered on server-confirm) and any visible
+  // message Wiz re-rendered get re-scanned. The newest four are included even before the
+  // IntersectionObserver reports them, so a sent message settles on the very next pass. scanTopic
+  // early-returns on an unchanged fingerprint (two attribute queries, no style or layout reads), so
+  // this stays cheap on quiet mutations.
   function requeueRecentTopics(pane) {
     const ts = pane.querySelectorAll(TOPIC_SEL);
     for (let i = Math.max(0, ts.length - 4); i < ts.length; i++) topicQueue.add(ts[i]);
+    for (const t of visibleTopics) {
+      if (t.isConnected) topicQueue.add(t);
+      else { visibleTopics.delete(t); topicIO.unobserve(t); }
+    }
   }
 
   // ---- self identity: read the signed-in user's own avatar URL + name into CSS vars ----
@@ -580,12 +628,15 @@
       }
     }
     // 2) Gmail-embedded Chat is a cross-origin chat.google.com iframe: it has no account button, and
-    // Gmail's (in the top frame) is browser-blocked. Derive identity from one of YOUR OWN messages —
-    // data-name gives the display name directly (always resolves whenever selfslack has work), and the
-    // self hovercard-id / user-id find a matching avatar <img> in-frame IF one is rendered (roster /
-    // header cluster / hovercard). Any hit is also cached for other frames.
+    // Gmail's (in the top frame) is browser-blocked. Derive identity from one of YOUR OWN messages (the
+    // sender span inside a message Google flags as yours) — data-name gives the display name directly
+    // (always resolves whenever selfslack has work), and the self hovercard-id / user-id find a
+    // matching avatar <img> in-frame IF one is rendered (roster / header cluster / hovercard). Any hit
+    // is also cached for other frames.
     if (!selfNameSet || !selfAvatarSet) {
-      const selfEl = C.firstMatchEl('selfMessageAuthor');
+      const mine = C.firstMatchEl('viewerMessage');
+      const root = mine && mine.closest(C.sel('messageRoot'));
+      const selfEl = root && C.firstMatchEl('messageAuthor', root);
       if (selfEl) {
         if (!selfNameSet) {
           const name = (selfEl.getAttribute('data-name') || '').trim();
@@ -628,7 +679,7 @@
       try { scanAvatars(rail); } catch (e) {}
       try { scanSpaceNames(rail); } catch (e) {}
       try { if (pane) tagStream(pane); } catch (e) {}
-      if (pane) { try { scanDividers(pane); } catch (e) {} try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { scanReactionPills(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
+      if (pane) { try { scanDividers(pane); } catch (e) {} try { scanDates(pane); } catch (e) {} try { scanThreadReplies(pane); } catch (e) {} try { discoverTopics(pane); } catch (e) {} try { requeueRecentTopics(pane); } catch (e) {} }
     }
     const hasTime = () => !deadline || typeof deadline.timeRemaining !== 'function' || deadline.timeRemaining() > 3;
     for (const t of topicQueue) {

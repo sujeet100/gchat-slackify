@@ -21,6 +21,9 @@
   // so even composite "in the message area" rules don't hard-code the role string.
   /** Prefix `s` with each conversation-pane selector. @param {string} s @returns {string[]} */
   const inMain = (s) => SEL.conversationPane.map((p) => `${p} ${s}`);
+  // Every combination of two fallback arrays, joined by a combinator (descendant by default).
+  /** @param {string[]} a @param {string[]} b @param {string} [j] @returns {string[]} */
+  const cross = (a, b, j = ' ') => a.flatMap((x) => b.map((y) => `${x}${j}${y}`));
 
   /** Render a declarations object as `  prop: value !important;` lines. @param {Record<string,string>} o @returns {string} */
   const decls = (o) => Object.entries(o).map(([k, v]) => `  ${k}: ${v} !important;`).join('\n');
@@ -161,8 +164,17 @@
     // higher-specificity !important rule that a plain [data-slackify="bubble"] !important loses to.
     // Out-specify it: scope under [role="main"] and double the attribute (a valid specificity hack).
     const bubbleHi = SEL.conversationPane.map((p) => `${p} ${TAG.bubble}${TAG.bubble}`);
-    parts.push(mk('flatten', bubbleHi, '', { 'background-color': 'transparent', 'border-radius': '0', 'padding': '0', 'margin-top': '0' }));
+    // border-radius stays 8px, not 0: with no fill it's invisible, EXCEPT when Chat rings the bubble
+    // (a 1px #0B57D0 box-shadow on the parent of the open thread). At 0 that ring drew a hard
+    // rectangle that read as a text field; at 8px it reads as a selection, matching the chip radius.
+    parts.push(mk('flatten', bubbleHi, '', { 'background-color': 'transparent', 'border-radius': '8px', 'padding': '0', 'margin-top': '0' }));
     parts.push(mk('flatten', bubbleHi, ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
+    // GChat ALSO paints hover/press on a bubble through a full-size ::after state layer (Google blue
+    // #0B57D0 at 8% opacity, verified live) — clearing the element's own background never reaches it,
+    // so hovering one of your messages showed a pale-blue box behind the flattened text. Clear the
+    // pseudo layers' FILL only (not display:none), so a keyboard focus ring drawn there survives.
+    parts.push(mk('flatten', bubbleHi, '::before', { 'background-color': 'transparent' }));
+    parts.push(mk('flatten', bubbleHi, '::after', { 'background-color': 'transparent' }));
     // Suppress Google's own per-element hover highlight within messages (creates a weird inner glow).
     // Scoped to [role="main"] so it doesn't affect the sidebar.
     parts.push(mk('flatten', SEL.mainRow, ':hover', { 'background-color': 'transparent', 'box-shadow': 'none' }));
@@ -246,15 +258,33 @@
     // tinted pill shows (otherwise a white box appears behind the pill).
     parts.push(mk('mentionpills', SEL.userMention, ' *', { color: 'var(--sf-mention-pill-text)', 'background-color': 'transparent' }));
 
-    // ===== REACTION CHIPS =====
-    // The chips deliberately KEEP GChat's native shape (user decision, 2026-07-03): any tag-based
-    // reshaping has a re-render window where a fresh chip briefly shows native styling next to
-    // restyled ones — that flash of inconsistency is worse than not reshaping at all, and untagged
-    // native chips are consistent BY CONSTRUCTION. The tags (reaction-pill / reactions /
-    // reaction-add) stay: selfslack's alignment counter-rules need them, and the one safe visual
-    // tweak below — ordering "Add reaction" after the chips like Slack (on your own messages GChat
-    // puts it FIRST, where it reads as a broken first chip). CSS order only; DOM/focus untouched.
-    parts.push(mk('pills', [TAG.reactionAdd], '', { 'order': '1' }));
+    // ===== REACTION BAR =====
+    // Styled straight from Google's durable reaction-bar attributes (SELECTORS.reaction*), never from
+    // tagger tags — so every chip is styled on its FIRST paint and a Wiz re-render can't flash a
+    // native chip next to restyled ones (the reason v1.4.0 had to leave the bar alone). The count
+    // chips keep GChat's native rounded-rect shape (user decision, 2026-07-03). The "Add reaction"
+    // affordance is the odd one out natively: a 32px CIRCLE inside a wrapper with lopsided padding
+    // (1px 16px 5px), so its hover circle sat lower than the chips and read as a blob. Reshape it into
+    // a chip of the same height and radius, sitting flush, and order it after the chips like Slack (on
+    // your own messages GChat puts it FIRST). CSS only; DOM order and focus are untouched.
+    // margin-left 12px: GChat insets message TEXT 12px inside the (now flattened) bubble, but starts
+    // the reactions bar at the bubble's edge — so chips sat 12px left of the text they react to.
+    // Slack lines them up under the text.
+    parts.push(mk('pills', SEL.reactionList, '', { 'align-items': 'center', 'gap': '4px', 'margin-left': '12px' }));
+    parts.push(mk('pills', SEL.reactionAddSlot, '', { 'order': '1', 'align-self': 'center' }));
+    parts.push(mk('pills', SEL.reactionAddButton, '', { 'padding': '0', 'background-color': 'transparent' }));
+    parts.push(mk('pills', SEL.reactionAddButton, ' button', {
+      'width': '32px', 'height': '32px', 'border-radius': '8px', 'box-sizing': 'border-box',
+      'border': '1px solid transparent', 'background-color': 'transparent',
+    }));
+    // GChat's hover/focus state layers inside the button are 9999px-radius spans — the blue circle.
+    // Square their corners and drop their fill, so the hover below is the button's ONE surface (left
+    // tinted, they drew a darker square inside the hovered chip).
+    parts.push(mk('pills', SEL.reactionAddButton, ' button *', { 'border-radius': '8px', 'background-color': 'transparent' }));
+    // …and the button's own ::before is one more (Google blue at 10%, radius 9999px) — the circle
+    // still tinting the middle of the hovered chip.
+    parts.push(mk('pills', SEL.reactionAddButton, ' button::before', { 'border-radius': '8px', 'background-color': 'transparent' }));
+    parts.push(mk('pills', SEL.reactionAddButton, ' button:hover', { 'background-color': 'var(--sf-msg-hover)', 'border-color': 'var(--sf-border)' }));
     // Message hover toolbar — a floating action bar like Slack's. Surface is a MODE var (rule 8):
     // a hard-coded white here left GChat's light dark-mode icons invisible in dark mode.
     parts.push(mk('pills', SEL.messageToolbar, '', { 'background-color': 'var(--sf-toolbar-bg)', 'border-radius': '6px', 'box-shadow': '0 1px 4px rgba(0,0,0,0.12)' }));
@@ -281,9 +311,12 @@
     // GChat gives the avatar column a top margin so the avatar lines up with the message body (below
     // the name). Zero it so the avatar pins to the very top, aligned with the sender name (Slack).
     parts.push(mk('msgalign', [TAG.msgRow], ' > div', { 'margin-top': '0' }));
-    // Tighten the gap between the avatar column and the message content (GChat leaves ~16px; Slack
-    // sits closer). Applies to the avatar column (the row's first child).
-    parts.push(mk('msgalign', [TAG.msgRow], ' > div:first-child', { 'margin-right': '8px' }));
+    // Gap between the (enlarged, 36px) avatar column and the content. Chat's native column is 32px +
+    // 16px gap = content at +48px, and GROUPED follow-up messages (no avatar → never tagged msgrow)
+    // keep exactly that. 36 + 12 lands the first message of a group on the same +48px line, so a
+    // group's text — and emoji-only messages within it — share one left edge (8px left the first
+    // message ~4px left of its follow-ups, visibly ragged). selfslack's 48px gutter matches.
+    parts.push(mk('msgalign', [TAG.msgRow], ' > div:first-child', { 'margin-right': '12px' }));
     parts.push(mk('msgalign', inMain(TAG.avatarWrap), '', { width: '36px', height: '36px', 'min-width': '36px' }));
     parts.push(mk('msgalign', inMain(`${TAG.avatarWrap} img`), '', { width: '36px', height: '36px' }));
 
@@ -295,20 +328,48 @@
     // bubble itself is removed by the separate 'flatten' feature (the bubble is also tagged 'bubble').
     const selfRow = inMain(TAG.selfRow);
     // Left-align the column AND set justify-start, so it works whether the tagged row is a flex column
-    // (right-aligned via align-items) or a flex row (via justify-content). 44px = 36px avatar + 8 gap.
+    // (right-aligned via align-items) or a flex row (via justify-content). 48px = 36px avatar + 12 gap,
+    // the same content line as other people's messages (see msgalign) so both columns share one edge.
     // No padding-top: group-first keeps GChat's header (name+time) in normal flow (tight spacing); only
     // grouped follow-ups (data-sf-self-notime) reserve a line for their ::after name — see below.
-    parts.push(mk('selfslack', selfRow, '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'position': 'relative', 'padding-left': '44px', 'box-sizing': 'border-box' }));
-    // Undo the nested right-push on descendants so the content sits at the left. The inner flex-end
-    // levels are content-width no-ops today, but resetting them future-proofs deeper/altered trees.
-    parts.push(mk('selfslack', selfRow, ' *', { 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
-    // …but that blanket reset wrecks the reaction chips, which are small CENTERED flexboxes
-    // (emoji + count get pushed to the top-left corner and the chip stops stretching). Restore
-    // native alignment inside the tagged reactions strip — these selectors carry one more
-    // attribute than the `selfRow *` reset above, so they win the specificity race.
-    const selfReactions = inMain(`${TAG.selfRow} ${TAG.reactions}`);
-    parts.push(mk('selfslack', selfReactions, ' *', { 'align-self': 'auto' }));
-    parts.push(mk('selfslack', selfReactions.flatMap((s) => [`${s} button`, `${s} [role="button"]`]), '', { 'justify-content': 'center' }));
+    parts.push(mk('selfslack', selfRow, '', { 'align-items': 'flex-start', 'justify-content': 'flex-start', 'position': 'relative', 'padding-left': '48px', 'box-sizing': 'border-box' }));
+    // Undo the nested right-push on descendants so the content sits at the left. This is load-bearing:
+    // without it the bubble chain jumps 600–850px back to the right. The right-push lives entirely in
+    // DIV layout containers, so only divs are reset (measured: div-only places every element exactly
+    // where the old blanket `*` reset did). Spans are left alone because align-self in a ROW flexbox
+    // is the VERTICAL axis — forcing flex-start there top-aligns items that Chat centres, which is
+    // what knocked the edit form's Update/Cancel buttons 6px out of line.
+    // Also EXCLUDED: buttons and everything inside them (self-centring flexboxes — the reset pushed
+    // reaction-chip emoji and the add-reaction icon into the corner), and the inline editor's subtree
+    // (it has rows of centred controls; it gets its own left-alignment below).
+    const editor = SEL.messageEditor;
+    const notEditor = editor.map((e) => `:not(${e} *)`).join('');
+    parts.push(mk('selfslack', selfRow, ` div:not([role="button"]):not(button *):not([role="button"] *)${notEditor}`, { 'justify-content': 'flex-start', 'align-self': 'flex-start' }));
+    // INLINE EDITOR (Edit on your own message). Chat right-aligns it like the bubble and sizes it to
+    // its content; Slack edits in a full-width box at the message's left edge. Its first three wrapper
+    // levels carry the right-push (align-items / align-self: flex-end, plus a fit-content width):
+    // stretch them to the row, then start-align the third level, which holds the formatting icons
+    // and the Update/Cancel row (left in place: they're centred rows). The editor surface itself is
+    // the inner [data-is-edit] pair — let it fill the width.
+    const selfEditor = cross(selfRow, editor);
+    parts.push(mk('selfslack', selfEditor, ' > div', { 'align-self': 'stretch' }));
+    parts.push(mk('selfslack', selfEditor, ' > div > div', { 'align-self': 'stretch', 'width': 'auto' }));
+    parts.push(mk('selfslack', selfEditor, ' > div > div > div', { 'align-self': 'stretch', 'width': 'auto', 'align-items': 'flex-start', 'justify-content': 'flex-start' }));
+    parts.push(mk('selfslack', selfEditor, ' div[data-is-edit="true"]', { 'align-self': 'stretch', 'flex-grow': '1', 'min-width': '0' }));
+    // HOVER ACTION BAR on your own messages. Chat anchors it to the bubble's RIGHT edge and grows it
+    // leftward (a row-reverse container at left:-10px/right:10px) — right for a right-aligned bubble,
+    // but once selfslack moves the bubble left it spills off the pane over your avatar and name, and
+    // clips the first quick reaction. Give it the geometry Chat uses for everyone else's messages:
+    // anchored at the bubble's left edge, growing right (the bar has a single child, so the button
+    // order is unchanged).
+    parts.push(mk('selfslack', cross(cross(selfRow, [TAG.bubble]), SEL.messageHoverBar, ' > '), '', { 'left': '10px', 'right': '-10px', 'flex-direction': 'row', 'justify-content': 'flex-start' }));
+    // THREAD ROW ("N replies · time") under your own messages is mirrored the same way: a row-reverse
+    // line that puts the curved connector AFTER the chip, with the connector svg flipped
+    // (scaleX(-1)) and inset 8px. Restore everyone else's geometry: connector first, unflipped,
+    // flush with the row's left edge (measured: identical x for the connector and the count).
+    const selfThread = cross(selfRow, SEL.threadReplyRow);
+    parts.push(mk('selfslack', selfThread, ' > div', { 'flex-direction': 'row' }));
+    parts.push(mk('selfslack', selfThread, ' > div > :first-child svg', { 'transform': 'none', 'margin-left': '0' }));
     // The avatar tile in the gutter — squared (Slack style, matches 'avatarshape'); a neutral
     // placeholder shows until tagger.js sets --sf-self-avatar from the account button.
     parts.push(mk('selfslack', selfRow, '::before', {
@@ -322,14 +383,18 @@
     // and just prefix the name via ::before, so "Name  time" sit on ONE line with GChat's own tight
     // header→body spacing (no extra reserved gap). --sf-self-name is set by tagger; falls back to "You".
     const selfMeta = inMain(TAG.selfMeta);
-    parts.push(mk('selfslack', selfMeta, '', { 'align-items': 'baseline' }));
+    // margin-left 4px: other people's header row is inset 12px (like the body text); ours is preceded
+    // by GChat's fixed 8px spacer holding the visually-hidden "You" label, so 4px more puts YOUR name
+    // on the same left edge as theirs (it sat 4px left of every other name). The spacer is a fixed CSS
+    // width (its localized text is clipped to 1px), so this offset doesn't vary by language.
+    parts.push(mk('selfslack', selfMeta, '', { 'align-items': 'baseline', 'margin-left': '4px' }));
     parts.push(mk('selfslack', selfMeta, '::before', {
       'content': 'var(--sf-self-name, "You")', 'margin-right': '8px',
       'font-weight': '700', 'font-size': '15px', 'line-height': '18px',
       'color': 'var(--sf-content-text)', 'white-space': 'nowrap',
     }));
     // Grouped follow-up own-messages (tagger marks them data-sf-self-notime): no visible header, so
-    // hide the repeated avatar and show just the body — the 44px left padding keeps it aligned under
+    // hide the repeated avatar and show just the body — the 48px left padding keeps it aligned under
     // the group, exactly like Slack's message grouping.
     const selfNoTime = inMain(`${TAG.selfRow}[data-sf-self-notime]`);
     parts.push(mk('selfslack', selfNoTime, '::before', { 'display': 'none' }));
